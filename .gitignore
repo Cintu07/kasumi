@@ -8,3 +8,5 @@
 /.venv
 /docs/*.cu
 forms/*.cu
+/showcase/*.mp4
+/showcase/*.png

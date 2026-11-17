@@ -34,7 +34,7 @@ cargo build --release
 |---|---|
 | `kasumi live <form>` | Live window with hot reload. If a save fails to compile, the old form keeps running and the error is shown on screen. |
 | `kasumi render <form> --res 4k --points 200m --sub 8` | 4K still with 8 motion-blur subframes (1.6 billion points). |
-| `kasumi render <form> --seconds 10 --fps 60` | Video, rendered in 16-bit and piped to ffmpeg, which encodes it as 10-bit HEVC (Main 10) with hevc_nvenc. Without ffmpeg it writes PNG frames. |
+| `kasumi render <form> --seconds 10 --fps 60` | Video via ffmpeg + NVENC. The default is H.264, which plays everywhere. `--codec hevc` gives a 10-bit HEVC master (Windows needs the paid HEVC extension to play it) and `--codec av1` gives 10-bit AV1. Without ffmpeg it writes PNG frames. |
 | `kasumi check <forms>` | Compares GPU point positions against the CPU reference interpreter. |
 | `kasumi bench [forms]` | Naive vs warp vs tile-binning accumulation, and checks that all three produce the same image. |
 | `kasumi ptx <form>` | Writes out the generated CUDA and PTX, plus IR pass statistics. |

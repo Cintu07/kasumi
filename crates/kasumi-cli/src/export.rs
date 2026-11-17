@@ -68,13 +68,24 @@ pub fn render(args: &Args) -> Result<()> {
     let mut child = None;
     let frame_dir = out.with_extension("frames");
     if let Some(ff) = &ffmpeg {
-        let codec = args.get("codec").unwrap_or("hevc_nvenc");
+        // h264 (default) plays everywhere: windows, browsers, phones, social.
+        // hevc is a 10-bit master; windows needs the paid hevc extension to play it.
+        let codec = args.get("codec").unwrap_or("h264");
         let mut cmd = Command::new(ff);
         cmd.args(["-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb48le", "-s", &format!("{w}x{h}"), "-r", &fps.to_string(), "-i", "-"]);
-        if codec.contains("nvenc") {
-            cmd.args(["-c:v", codec, "-preset", "p6", "-rc", "vbr", "-cq", "16", "-b:v", "0", "-pix_fmt", "p010le", "-profile:v", "main10", "-tag:v", "hvc1"]);
-        } else {
-            cmd.args(["-c:v", codec, "-crf", "16", "-pix_fmt", "yuv420p10le"]);
+        match codec {
+            "h264" | "h264_nvenc" => {
+                cmd.args(["-c:v", "h264_nvenc", "-preset", "p6", "-profile:v", "high", "-rc", "vbr", "-cq", "18", "-b:v", "0", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]);
+            }
+            "hevc" | "hevc_nvenc" => {
+                cmd.args(["-c:v", "hevc_nvenc", "-preset", "p6", "-rc", "vbr", "-cq", "16", "-b:v", "0", "-pix_fmt", "p010le", "-profile:v", "main10", "-tag:v", "hvc1"]);
+            }
+            "av1" | "av1_nvenc" => {
+                cmd.args(["-c:v", "av1_nvenc", "-preset", "p6", "-rc", "vbr", "-cq", "24", "-b:v", "0", "-pix_fmt", "p010le"]);
+            }
+            other => {
+                cmd.args(["-c:v", other, "-crf", "16", "-pix_fmt", "yuv420p"]);
+            }
         }
         cmd.arg(&out).stdin(Stdio::piped());
         child = Some(cmd.spawn().context("starting ffmpeg")?);
@@ -105,7 +116,7 @@ pub fn render(args: &Args) -> Result<()> {
         drop(c.stdin.take());
         let s = c.wait()?;
         if !s.success() {
-            bail!("ffmpeg failed ({s}); try --codec libx265");
+            bail!("ffmpeg failed ({s}); try --codec libx264");
         }
         println!("wrote {}", out.display());
     } else {
