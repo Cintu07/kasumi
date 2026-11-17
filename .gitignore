@@ -1,0 +1,10 @@
+/target
+/.cuda
+/shots
+/renders
+/runs
+/explore
+*.ptx
+/.venv
+/docs/*.cu
+forms/*.cu
