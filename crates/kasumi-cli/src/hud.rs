@@ -59,6 +59,14 @@ pub fn rect(buf: &mut [u32], w: usize, h: usize, x0: i32, y0: i32, x1: i32, y1: 
     }
 }
 
+pub fn fill(buf: &mut [u32], w: usize, h: usize, x0: i32, y0: i32, x1: i32, y1: i32, color: u32) {
+    for y in y0.max(0)..y1.min(h as i32) {
+        for x in x0.max(0)..x1.min(w as i32) {
+            buf[y as usize * w + x as usize] = color;
+        }
+    }
+}
+
 pub const WHITE: u32 = 0xE8E8E8;
 pub const GREY: u32 = 0x8A8A8A;
 pub const RED: u32 = 0xFF5A5A;
