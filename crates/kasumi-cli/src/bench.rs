@@ -125,6 +125,10 @@ pub fn bench(args: &Args) -> Result<()> {
         }
         let lit = dens[0].iter().filter(|&&c| c > 0.0).count();
         let maxd = dens[0].iter().cloned().fold(0.0f32, f32::max);
+        if !l.prog.ir.has_b() {
+            let hits: f64 = dens[0].iter().map(|&c| c as f64).sum();
+            println!("  {}: {:.1}% of points land on screen", stem(path), hits / points as f64 * 100.0);
+        }
         let maxdiff = dens[0].iter().zip(&dens[2]).map(|(a, b)| (a - b).abs() / (1.0 + a.abs())).fold(0.0f32, f32::max);
         // unweighted counts are integers and must match exactly; weighted (b)
         // sums are added in a different order, so allow float rounding
