@@ -305,6 +305,82 @@ extern "C" __global__ void ks_bloom_blur(GP P) {
   o[0] = s[0] / sum; o[1] = s[1] / sum; o[2] = s[2] / sum;
 }
 
+// adaptive density estimation: sparse pixels are blurred more than dense ones,
+// which removes grain where few points landed and leaves dense detail sharp.
+// the blur comes from a small mip chain of the accumulation buffer
+struct DD { const float* src_c; const float* src_h; float* dst_c; float* dst_h; int sw, shi, dw, dhi, has_h, pad; };
+
+extern "C" __global__ void ks_de_down(DD P) {
+  const int x = blockIdx.x * 16 + threadIdx.x, y = blockIdx.y * 16 + threadIdx.y;
+  if (x >= P.dw || y >= P.dhi) return;
+  float c = 0.f, h = 0.f;
+  for (int j = 0; j < 2; ++j) for (int i = 0; i < 2; ++i) {
+    const u64 q = (u64)min(y * 2 + j, P.shi - 1) * (u64)P.sw + (u64)min(x * 2 + i, P.sw - 1);
+    c += P.src_c[q];
+    if (P.has_h) h += P.src_h[q];
+  }
+  const u64 o = (u64)y * (u64)P.dw + (u64)x;
+  P.dst_c[o] = c * 0.25f;
+  if (P.has_h) P.dst_h[o] = h * 0.25f;
+}
+
+__device__ __forceinline__ float ks_bil(const float* t, int w, int h, float x, float y) {
+  const float fx = fmaxf(x - 0.5f, 0.f), fy = fmaxf(y - 0.5f, 0.f);
+  const int x0 = min((int)fx, w - 1), y0 = min((int)fy, h - 1);
+  const int x1 = min(x0 + 1, w - 1), y1 = min(y0 + 1, h - 1);
+  const float tx = fx - (float)x0, ty = fy - (float)y0;
+  const float a = t[(u64)y0 * (u64)w + (u64)x0] * (1.f - tx) + t[(u64)y0 * (u64)w + (u64)x1] * tx;
+  const float b = t[(u64)y1 * (u64)w + (u64)x0] * (1.f - tx) + t[(u64)y1 * (u64)w + (u64)x1] * tx;
+  return a * (1.f - ty) + b * ty;
+}
+
+// cubic b-spline sample from four bilinear fetches: the low levels of the chain
+// are very coarse, and plain bilinear shows their texels as stair steps
+__device__ __forceinline__ float ks_bic(const float* t, int w, int h, float x, float y) {
+  const float tx = x - 0.5f, ty = y - 0.5f;
+  const float ix = floorf(tx), iy = floorf(ty), fx = tx - ix, fy = ty - iy;
+  const float x2 = fx * fx, x3 = x2 * fx, y2 = fy * fy, y3 = y2 * fy;
+  const float a0 = (1.f - 3.f * fx + 3.f * x2 - x3) / 6.f, a1 = (4.f - 6.f * x2 + 3.f * x3) / 6.f;
+  const float a2 = (1.f + 3.f * fx + 3.f * x2 - 3.f * x3) / 6.f, a3 = x3 / 6.f;
+  const float b0 = (1.f - 3.f * fy + 3.f * y2 - y3) / 6.f, b1 = (4.f - 6.f * y2 + 3.f * y3) / 6.f;
+  const float b2 = (1.f + 3.f * fy + 3.f * y2 - 3.f * y3) / 6.f, b3 = y3 / 6.f;
+  const float gx0 = a0 + a1, gx1 = a2 + a3, gy0 = b0 + b1, gy1 = b2 + b3;
+  const float px0 = ix + a1 / gx0 - 0.5f, px1 = ix + a3 / gx1 + 1.5f;
+  const float py0 = iy + b1 / gy0 - 0.5f, py1 = iy + b3 / gy1 + 1.5f;
+  return gy0 * (gx0 * ks_bil(t, w, h, px0, py0) + gx1 * ks_bil(t, w, h, px1, py0))
+       + gy1 * (gx0 * ks_bil(t, w, h, px0, py1) + gx1 * ks_bil(t, w, h, px1, py1));
+}
+
+struct RP {
+  const float* acc_c; const float* acc_h; float* out_c; float* out_h;
+  const float* lc[4]; const float* lh[4];
+  int W, H; int lvw[4]; int lvh[4];
+  float maxrad, curve; int has_h, pad;
+};
+
+extern "C" __global__ void ks_de_resolve(RP P) {
+  const int x = blockIdx.x * 16 + threadIdx.x, y = blockIdx.y * 16 + threadIdx.y;
+  if (x >= P.W || y >= P.H) return;
+  const u64 o = (u64)y * (u64)P.W + (u64)x;
+  const float px = (float)x + 0.5f, py = (float)y + 0.5f;
+  // local density from the quarter-resolution level picks the blur width
+  const float d = ks_bic(P.lc[1], P.lvw[1], P.lvh[1], px * 0.25f, py * 0.25f);
+  const float width = P.maxrad / powf(1.f + d, P.curve);
+  const float L = fminf(log2f(fmaxf(width, 1.f)), 4.f);
+  const int k0 = (int)L, k1 = min(k0 + 1, 4);
+  const float f = L - (float)k0;
+  float c[2], h[2];
+  for (int n = 0; n < 2; ++n) {
+    const int k = n == 0 ? k0 : k1;
+    if (k == 0) { c[n] = P.acc_c[o]; h[n] = P.has_h ? P.acc_h[o] : 0.f; continue; }
+    const float s = 1.f / (float)(1 << k);
+    c[n] = ks_bic(P.lc[k - 1], P.lvw[k - 1], P.lvh[k - 1], px * s, py * s);
+    h[n] = P.has_h ? ks_bic(P.lh[k - 1], P.lvw[k - 1], P.lvh[k - 1], px * s, py * s) : 0.f;
+  }
+  P.out_c[o] = c[0] + (c[1] - c[0]) * f;
+  if (P.has_h) P.out_h[o] = h[0] + (h[1] - h[0]) * f;
+}
+
 struct DP { float* a; float* b; u64 n; float f; int has_b; };
 
 // feedback trails: fade the accumulation instead of clearing it

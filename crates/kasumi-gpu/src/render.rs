@@ -177,6 +177,40 @@ struct GP {
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
+struct DD {
+    src_c: u64,
+    src_h: u64,
+    dst_c: u64,
+    dst_h: u64,
+    sw: i32,
+    sh: i32,
+    dw: i32,
+    dh: i32,
+    has_h: i32,
+    pad: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct RP {
+    acc_c: u64,
+    acc_h: u64,
+    out_c: u64,
+    out_h: u64,
+    lc: [u64; 4],
+    lh: [u64; 4],
+    w: i32,
+    h: i32,
+    lvw: [i32; 4],
+    lvh: [i32; 4],
+    maxrad: f32,
+    curve: f32,
+    has_h: i32,
+    pad: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
 struct DP {
     a: u64,
     b: u64,
@@ -196,6 +230,8 @@ pub struct Statics {
     decay: Func,
     bloom_build: Func,
     bloom_blur: Func,
+    de_down: Func,
+    de_resolve: Func,
 }
 
 impl Statics {
@@ -211,6 +247,8 @@ impl Statics {
             decay: gpu.func(&m, "ks_decay")?,
             bloom_build: gpu.func(&m, "ks_bloom_build")?,
             bloom_blur: gpu.func(&m, "ks_bloom_blur")?,
+            de_down: gpu.func(&m, "ks_de_down")?,
+            de_resolve: gpu.func(&m, "ks_de_resolve")?,
             _m: m,
         })
     }
@@ -279,6 +317,8 @@ pub struct Look {
     pub trail: f32,
     pub shutter: f32,
     pub bloom: f32,
+    /// widest density-estimation blur in accumulation pixels (0 = off)
+    pub de: f32,
 }
 
 pub const PALETTES: &[(&str, [f32; 3], [f32; 3])] = &[
@@ -316,6 +356,7 @@ impl Look {
             trail: f.num_or("trail", 0.0) as f32,
             shutter: f.num_or("shutter", 0.5) as f32,
             bloom: f.num_or("bloom", 0.0) as f32,
+            de: f.num_or("de", 0.0) as f32,
         }
     }
     pub fn set_palette(&mut self, name: &str) {
@@ -368,6 +409,13 @@ pub struct FrameStats {
     pub ms: f64,
 }
 
+/// Mip chain and output of the density-estimation pass.
+struct DeBufs {
+    levels: Vec<(Buf, Buf, u32, u32)>,
+    out_c: Buf,
+    out_h: Buf,
+}
+
 struct BinScratch {
     pre_t: Buf,
     pre_k: Buf,
@@ -399,6 +447,7 @@ pub struct Target {
     bin: Option<BinScratch>,
     /// blurred glow and its scratch buffer, allocated when a form uses @bloom
     glow: Option<(Buf, Buf)>,
+    de: Option<DeBufs>,
     /// smoothed reference density (log domain) for stable exposure
     ref_log: Option<f32>,
     pub lit: u64,
@@ -425,6 +474,7 @@ impl Target {
             uni_cap: 4096,
             bin: None,
             glow: None,
+            de: None,
             ref_log: None,
             lit: 0,
         };
@@ -628,12 +678,59 @@ impl Target {
         Ok(FrameStats { points: n * subs as u64, ms: t0.elapsed().as_secs_f64() * 1e3 })
     }
 
+    /// Run density estimation if the form asks for it. Returns the density and
+    /// hue buffers the tone map should read; the accumulation stays untouched,
+    /// so trails keep working.
+    fn density_estimate(&mut self, gpu: &Gpu, st: &Statics, look: &Look, has_h: bool) -> Result<(u64, u64)> {
+        if look.de <= 0.0 {
+            return Ok((self.acc_c.ptr, self.acc_h.ptr));
+        }
+        if self.de.is_none() {
+            let (mut w, mut h) = (self.aw, self.ah);
+            let mut levels = Vec::new();
+            for _ in 0..4 {
+                w = w.div_ceil(2).max(1);
+                h = h.div_ceil(2).max(1);
+                let px = w as usize * h as usize * 4;
+                levels.push((gpu.alloc(px)?, gpu.alloc(px)?, w, h));
+            }
+            let px = self.aw as usize * self.ah as usize * 4;
+            self.de = Some(DeBufs { levels, out_c: gpu.alloc(px)?, out_h: gpu.alloc(px)? });
+        }
+        let d = self.de.as_ref().unwrap();
+        let (mut sc, mut sh, mut sw, mut shi) = (self.acc_c.ptr, self.acc_h.ptr, self.aw, self.ah);
+        let mut rp = RP {
+            acc_c: self.acc_c.ptr,
+            acc_h: self.acc_h.ptr,
+            out_c: d.out_c.ptr,
+            out_h: d.out_h.ptr,
+            w: self.aw as i32,
+            h: self.ah as i32,
+            maxrad: look.de,
+            curve: 0.4,
+            has_h: has_h as i32,
+            ..Default::default()
+        };
+        for (k, (c, h, w, hi)) in d.levels.iter().enumerate() {
+            let p = DD { src_c: sc, src_h: sh, dst_c: c.ptr, dst_h: h.ptr, sw: sw as i32, sh: shi as i32, dw: *w as i32, dh: *hi as i32, has_h: has_h as i32, pad: 0 };
+            gpu.launch(st.de_down, (w.div_ceil(16), hi.div_ceil(16), 1), (16, 16, 1), 0, &p)?;
+            rp.lc[k] = c.ptr;
+            rp.lh[k] = h.ptr;
+            rp.lvw[k] = *w as i32;
+            rp.lvh[k] = *hi as i32;
+            (sc, sh, sw, shi) = (c.ptr, h.ptr, *w, *hi);
+        }
+        gpu.launch(st.de_resolve, (self.aw.div_ceil(16), self.ah.div_ceil(16), 1), (16, 16, 1), 0, &rp)?;
+        Ok((d.out_c.ptr, d.out_h.ptr))
+    }
+
     /// Histogram -> reference density -> tone map into the output buffer.
     /// `smooth` eases exposure changes between frames (live and video).
     pub fn tonemap(&mut self, gpu: &Gpu, st: &Statics, look: &Look, has_h: bool, smooth: bool) -> Result<()> {
+        let (dens_c, dens_h) = self.density_estimate(gpu, st, look, has_h)?;
         gpu.zero(&self.hist)?;
         let n = self.aw as u64 * self.ah as u64;
-        gpu.launch(st.hist, (gpu.sm_count * 4, 1, 1), (256, 1, 1), 0, &HP { acc: self.acc_c.ptr, hist: self.hist.ptr, n })?;
+        gpu.launch(st.hist, (gpu.sm_count * 4, 1, 1), (256, 1, 1), 0, &HP { acc: dens_c, hist: self.hist.ptr, n })?;
         let mut hist = [0u32; 1024];
         gpu.download(&self.hist, &mut hist)?;
         let lit: u64 = hist.iter().map(|&h| h as u64).sum();
@@ -673,8 +770,8 @@ impl Target {
             let (g, tmp) = self.glow.as_ref().unwrap();
             let grid = (bw.div_ceil(16), bh.div_ceil(16), 1);
             let bp = BP {
-                acc_c: self.acc_c.ptr,
-                acc_h: self.acc_h.ptr,
+                acc_c: dens_c,
+                acc_h: dens_h,
                 out: tmp.ptr,
                 w: self.aw as i32,
                 h: self.ah as i32,
@@ -693,8 +790,8 @@ impl Target {
             bloom = tmp.ptr;
         }
         let p = TP {
-            acc_c: self.acc_c.ptr,
-            acc_h: self.acc_h.ptr,
+            acc_c: dens_c,
+            acc_h: dens_h,
             out: self.out.ptr,
             w: self.aw as i32,
             h: self.ah as i32,
