@@ -9,6 +9,8 @@ run locally on the gpu) and fits a logistic regression on the embeddings.
     python taste/siglip.py serve              # used by `kasumi evolve --taste siglip`
 
 `serve` reads one png path per line on stdin and answers one score per line.
+`serve --embed` adds the image embedding after each score, for novelty search.
+It also runs with no trained model, and then every score is 0.5.
 """
 
 import argparse
@@ -131,10 +133,14 @@ def cmd_train(a):
 
 def cmd_serve(a):
     path = os.path.join(EXPLORE, "taste_embed.pkl")
-    with open(path, "rb") as f:
-        saved = pickle.load(f)
-    emb = Embedder(saved["model"])
-    clf = saved["clf"]
+    saved = None
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            saved = pickle.load(f)
+    elif not a.embed:
+        sys.exit("no trained model: run `taste/siglip.py train` first")
+    emb = Embedder(saved["model"] if saved else a.model)
+    clf = saved["clf"] if saved else None
     print("ready", flush=True)
     batch = []
     for line in sys.stdin:
@@ -142,8 +148,11 @@ def cmd_serve(a):
         if line == "":
             # blank line ends a batch: score everything received so far
             if batch:
-                s = clf.predict_proba(emb(batch))[:, 1]
-                sys.stdout.write("".join(f"{v:.6f}\n" for v in s))
+                e = emb(batch)
+                s = clf.predict_proba(e)[:, 1] if clf is not None else np.full(len(batch), 0.5)
+                for k, v in enumerate(s):
+                    extra = " " + " ".join(f"{x:.5f}" for x in e[k]) if a.embed else ""
+                    sys.stdout.write(f"{v:.6f}{extra}\n")
                 sys.stdout.flush()
                 batch = []
             continue
@@ -157,7 +166,9 @@ def main():
     sub.add_parser("compare")
     t = sub.add_parser("train")
     t.add_argument("--model", choices=list(MODELS), default="siglip")
-    sub.add_parser("serve")
+    s = sub.add_parser("serve")
+    s.add_argument("--embed", action="store_true")
+    s.add_argument("--model", choices=list(MODELS), default="siglip")
     a = p.parse_args()
     {"compare": cmd_compare, "train": cmd_train, "serve": cmd_serve}[a.cmd](a)
 

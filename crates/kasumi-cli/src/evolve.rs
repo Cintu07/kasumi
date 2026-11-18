@@ -21,19 +21,34 @@ const THUMB: u32 = 192;
 /// (`taste/siglip.py serve`), which scores thumbnails a batch at a time.
 enum Scorer {
     Builtin(Option<Taste>),
-    Embed { child: std::process::Child, stdin: std::process::ChildStdin, stdout: std::io::BufReader<std::process::ChildStdout>, dir: PathBuf },
+    Embed {
+        child: std::process::Child,
+        stdin: std::process::ChildStdin,
+        stdout: std::io::BufReader<std::process::ChildStdout>,
+        dir: PathBuf,
+        /// the sidecar's score is the taste score (otherwise it only supplies embeddings)
+        taste_from_sidecar: bool,
+        builtin: Option<Taste>,
+        embeddings: bool,
+    },
 }
 
 impl Scorer {
-    fn new(kind: &str, out: &Path) -> Result<Scorer> {
-        if kind != "siglip" && kind != "embed" {
+    fn new(kind: &str, novelty: &str, out: &Path) -> Result<Scorer> {
+        let sidecar_taste = kind == "siglip" || kind == "embed";
+        let embeddings = novelty == "embed";
+        if !sidecar_taste && !embeddings {
             return Ok(Scorer::Builtin(load_taste(Path::new("explore/taste.json"))));
         }
         let py = if cfg!(windows) { ".venv/Scripts/python.exe" } else { ".venv/bin/python" };
         anyhow::ensure!(Path::new(py).is_file(), "--taste siglip needs the python venv ({py}); see README");
-        anyhow::ensure!(Path::new("explore/taste_embed.pkl").is_file(), "no embedding taste model yet: run `{py} taste/siglip.py train`");
+        anyhow::ensure!(!sidecar_taste || Path::new("explore/taste_embed.pkl").is_file(), "no embedding taste model yet: run `{py} taste/siglip.py train`");
+        let mut sidecar_args = vec!["taste/siglip.py", "serve"];
+        if embeddings {
+            sidecar_args.push("--embed");
+        }
         let mut child = std::process::Command::new(py)
-            .args(["taste/siglip.py", "serve"])
+            .args(&sidecar_args)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .spawn()
@@ -45,22 +60,26 @@ impl Scorer {
         anyhow::ensure!(line.trim() == "ready", "taste sidecar failed to start");
         let dir = out.join("thumbs");
         std::fs::create_dir_all(&dir)?;
-        Ok(Scorer::Embed { child, stdin, stdout, dir })
+        let builtin = load_taste(Path::new("explore/taste.json"));
+        Ok(Scorer::Embed { child, stdin, stdout, dir, taste_from_sidecar: sidecar_taste, builtin, embeddings })
     }
 
     fn describe(&self) -> String {
         match self {
             Scorer::Builtin(Some(t)) => format!("features (held-out auc {:.2}, {} likes / {} skips)", t.auc, t.n_like, t.n_skip),
             Scorer::Builtin(None) => "off (score = novelty; run `kasumi grid` then `kasumi taste`)".into(),
-            Scorer::Embed { .. } => "image embeddings (taste/siglip.py)".into(),
+            Scorer::Embed { taste_from_sidecar: true, embeddings, .. } => format!("image embeddings{}", if *embeddings { ", novelty on embeddings" } else { "" }),
+            Scorer::Embed { builtin: Some(t), .. } => format!("features (held-out auc {:.2}), novelty on embeddings", t.auc),
+            Scorer::Embed { .. } => "off, novelty on image embeddings".into(),
         }
     }
 
-    /// One taste score per (features, pixels, id).
-    fn scores(&mut self, items: &[(&kasumi_explore::features::Feat, &[u32], &str)]) -> Result<Vec<f32>> {
+    /// One taste score per (features, pixels, id), plus the image embedding
+    /// when novelty is measured on embeddings.
+    fn scores(&mut self, items: &[(&kasumi_explore::features::Feat, &[u32], &str)]) -> Result<Vec<(f32, Option<Vec<f32>>)>> {
         match self {
-            Scorer::Builtin(t) => Ok(items.iter().map(|(f, _, _)| t.as_ref().map(|m| m.score(&taste_vec(f))).unwrap_or(0.5)).collect()),
-            Scorer::Embed { stdin, stdout, dir, .. } => {
+            Scorer::Builtin(t) => Ok(items.iter().map(|(f, _, _)| (t.as_ref().map(|m| m.score(&taste_vec(f))).unwrap_or(0.5), None)).collect()),
+            Scorer::Embed { stdin, stdout, dir, taste_from_sidecar, builtin, embeddings, .. } => {
                 if items.is_empty() {
                     return Ok(vec![]);
                 }
@@ -74,10 +93,14 @@ impl Scorer {
                 stdin.write_all(req.as_bytes())?;
                 stdin.flush()?;
                 let mut out = Vec::with_capacity(items.len());
-                for _ in 0..items.len() {
+                for (f, _, _) in items {
                     let mut line = String::new();
                     std::io::BufRead::read_line(stdout, &mut line)?;
-                    out.push(line.trim().parse::<f32>().context("bad score from taste sidecar")?);
+                    let mut parts = line.split_whitespace();
+                    let side: f32 = parts.next().context("empty line from taste sidecar")?.parse().context("bad score from taste sidecar")?;
+                    let t = if *taste_from_sidecar { side } else { builtin.as_ref().map(|m| m.score(&taste_vec(f))).unwrap_or(0.5) };
+                    let e = if *embeddings { Some(parts.map(|x| x.parse::<f32>()).collect::<Result<Vec<f32>, _>>().context("bad embedding from taste sidecar")?) } else { None };
+                    out.push((t, e));
                 }
                 Ok(out)
             }
@@ -104,7 +127,7 @@ pub fn evolve(args: &Args) -> Result<()> {
     let novelty_w = args.f32_or("novelty", 0.6)?;
     let out = PathBuf::from(args.get("out").map(String::from).unwrap_or(format!("runs/{}", timestamp())));
     std::fs::create_dir_all(out.join("forms"))?;
-    let mut taste = Scorer::new(args.get("taste").unwrap_or("features"), &out)?;
+    let mut taste = Scorer::new(args.get("taste").unwrap_or("features"), args.get("novelty-on").unwrap_or("features"), &out)?;
     let mut rng = Rng::from_time();
     let mut scratch = Target::new(&gpu, THUMB, THUMB, 1, 0)?;
     let mut archive = Archive::new();
@@ -202,9 +225,10 @@ fn offer_all(archive: &mut Archive, taste: &mut Scorer, evals: Vec<(Live, kasumi
     let items: Vec<(&kasumi_explore::features::Feat, &[u32], &str)> = evals.iter().map(|(l, f, px)| (f, px.as_slice(), l.cand.id.as_str())).collect();
     let ts = taste.scores(&items)?;
     let mut kept = 0;
-    for ((l, f, _), t) in evals.iter().zip(ts) {
-        let n = archive.novelty(&f.vec);
-        let e = Elite { id: l.cand.id.clone(), text: l.cand.text.clone(), score: t + novelty_w * n, taste: t, novelty: n, lit: f.lit, spread: f.spread, generation: gen, vec: f.vec.clone() };
+    for ((l, f, _), (t, emb)) in evals.iter().zip(ts) {
+        let vec = emb.unwrap_or_else(|| f.vec.clone());
+        let n = archive.novelty(&vec);
+        let e = Elite { id: l.cand.id.clone(), text: l.cand.text.clone(), score: t + novelty_w * n, taste: t, novelty: n, lit: f.lit, spread: f.spread, generation: gen, vec };
         if archive.offer(e, f) {
             kept += 1;
         }

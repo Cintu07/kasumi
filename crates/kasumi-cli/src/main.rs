@@ -22,7 +22,7 @@ usage:
   kasumi ptx    <form.ks>                                           dump generated cuda + ptx
   kasumi grid   <form.ks>                                           4x4 live mutations: click like, right-click breed
   kasumi taste                                                      train the taste model on your clicks
-  kasumi evolve [seeds...] [--minutes 480] [--batch 24]             overnight evolution -> runs/<id>/gallery
+  kasumi evolve [seeds...] [--minutes 480] [--novelty-on embed]     overnight evolution -> runs/<id>/gallery
   kasumi gallery <runs/id>                                          rebuild a run's gallery page
   kasumi info                                                       gpu / nvrtc info
 ";
