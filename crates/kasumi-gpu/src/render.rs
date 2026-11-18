@@ -140,6 +140,39 @@ struct TP {
     b: [f32; 3],
     has_h: i32,
     pad: i32,
+    bloom: u64,
+    bw: i32,
+    bh: i32,
+    bloom_gain: f32,
+    pad2: f32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct BP {
+    acc_c: u64,
+    acc_h: u64,
+    out: u64,
+    w: i32,
+    h: i32,
+    cell: i32,
+    bw: i32,
+    bh: i32,
+    has_h: i32,
+    inv_logref: f32,
+    a: [f32; 3],
+    b: [f32; 3],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+struct GP {
+    src: u64,
+    dst: u64,
+    w: i32,
+    h: i32,
+    dx: i32,
+    dy: i32,
 }
 
 #[repr(C)]
@@ -161,6 +194,8 @@ pub struct Statics {
     hist: Func,
     tonemap: Func,
     decay: Func,
+    bloom_build: Func,
+    bloom_blur: Func,
 }
 
 impl Statics {
@@ -174,6 +209,8 @@ impl Statics {
             hist: gpu.func(&m, "ks_hist")?,
             tonemap: gpu.func(&m, "ks_tonemap")?,
             decay: gpu.func(&m, "ks_decay")?,
+            bloom_build: gpu.func(&m, "ks_bloom_build")?,
+            bloom_blur: gpu.func(&m, "ks_bloom_blur")?,
             _m: m,
         })
     }
@@ -241,6 +278,7 @@ pub struct Look {
     pub focus: f32,
     pub trail: f32,
     pub shutter: f32,
+    pub bloom: f32,
 }
 
 pub const PALETTES: &[(&str, [f32; 3], [f32; 3])] = &[
@@ -277,6 +315,7 @@ impl Look {
             focus: f.num_or("focus", 0.0) as f32,
             trail: f.num_or("trail", 0.0) as f32,
             shutter: f.num_or("shutter", 0.5) as f32,
+            bloom: f.num_or("bloom", 0.0) as f32,
         }
     }
     pub fn set_palette(&mut self, name: &str) {
@@ -358,6 +397,8 @@ pub struct Target {
     uni: Buf,
     uni_cap: usize,
     bin: Option<BinScratch>,
+    /// blurred glow and its scratch buffer, allocated when a form uses @bloom
+    glow: Option<(Buf, Buf)>,
     /// smoothed reference density (log domain) for stable exposure
     ref_log: Option<f32>,
     pub lit: u64,
@@ -383,6 +424,7 @@ impl Target {
             uni: gpu.alloc(4096 * 4)?,
             uni_cap: 4096,
             bin: None,
+            glow: None,
             ref_log: None,
             lit: 0,
         };
@@ -620,6 +662,36 @@ impl Target {
         };
         self.ref_log = Some(r);
         let inv_logref = 1.0 / (r * std::f32::consts::LN_2); // 1 / ln(1 + ref)
+        // soft bloom: an eighth-resolution bright pass, blurred both ways
+        let (bw, bh) = (self.w.div_ceil(8), self.h.div_ceil(8));
+        let mut bloom = 0u64;
+        if look.bloom > 0.0 {
+            if self.glow.is_none() {
+                let bytes = bw as usize * bh as usize * 12;
+                self.glow = Some((gpu.alloc(bytes)?, gpu.alloc(bytes)?));
+            }
+            let (g, tmp) = self.glow.as_ref().unwrap();
+            let grid = (bw.div_ceil(16), bh.div_ceil(16), 1);
+            let bp = BP {
+                acc_c: self.acc_c.ptr,
+                acc_h: self.acc_h.ptr,
+                out: tmp.ptr,
+                w: self.aw as i32,
+                h: self.ah as i32,
+                cell: (8 * self.ss) as i32,
+                bw: bw as i32,
+                bh: bh as i32,
+                has_h: has_h as i32,
+                inv_logref,
+                a: look.a,
+                b: look.b,
+            };
+            gpu.launch(st.bloom_build, grid, (16, 16, 1), 0, &bp)?;
+            let pass = |src: u64, dst: u64, dx: i32, dy: i32| GP { src, dst, w: bw as i32, h: bh as i32, dx, dy };
+            gpu.launch(st.bloom_blur, grid, (16, 16, 1), 0, &pass(tmp.ptr, g.ptr, 1, 0))?;
+            gpu.launch(st.bloom_blur, grid, (16, 16, 1), 0, &pass(g.ptr, tmp.ptr, 0, 1))?;
+            bloom = tmp.ptr;
+        }
         let p = TP {
             acc_c: self.acc_c.ptr,
             acc_h: self.acc_h.ptr,
@@ -636,6 +708,11 @@ impl Target {
             b: look.b,
             has_h: has_h as i32,
             pad: 0,
+            bloom,
+            bw: bw as i32,
+            bh: bh as i32,
+            bloom_gain: look.bloom,
+            pad2: 0.0,
         };
         gpu.launch(st.tonemap, (self.w.div_ceil(16), self.h.div_ceil(16), 1), (16, 16, 1), 0, &p)
     }

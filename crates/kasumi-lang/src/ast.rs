@@ -211,7 +211,7 @@ pub const KEYWORDS: &[&str] = &["let", "param"];
 /// Every `@setting` the language accepts.
 pub const SETTINGS: &[&str] = &[
     "points", "iters", "warmup", "palette", "zoom", "cx", "cy", "gamma", "vibrancy", "heat",
-    "exposure", "trail", "dof", "focus", "shutter", "fastmath",
+    "exposure", "trail", "dof", "focus", "shutter", "fastmath", "bloom",
 ];
 
 impl Form {

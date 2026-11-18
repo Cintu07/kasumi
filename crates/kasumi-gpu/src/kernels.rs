@@ -196,6 +196,9 @@ struct TP {
   float inv_logref, gamma_inv, vib, heat;
   float ar, ag, ab, br, bg, bb;
   int has_h, pad;
+  const float* bloom;   // blurred glow, 3 floats per texel, null when off
+  int bw, bh;
+  float bloom_gain, pad2;
 };
 
 __device__ __forceinline__ float ks_tone1(float c, float al, float gi, float vib, float pa) {
@@ -225,6 +228,23 @@ extern "C" __global__ void ks_tonemap(TP P) {
   }
   const float inv = 1.f / (float)(P.ss * P.ss);
   r = fminf(fmaxf(r * inv, 0.f), 1.f); g = fminf(fmaxf(g * inv, 0.f), 1.f); b = fminf(fmaxf(b * inv, 0.f), 1.f);
+  if (P.bloom) {
+    // bilinear fetch of the blurred glow, added with a screen blend so it cannot clip
+    const float fx = fmaxf(((float)ox + 0.5f) * (float)P.bw / (float)OW - 0.5f, 0.f);
+    const float fy = fmaxf(((float)oy + 0.5f) * (float)P.bh / (float)OH - 0.5f, 0.f);
+    const int x0 = min((int)fx, P.bw - 1), y0 = min((int)fy, P.bh - 1);
+    const int x1 = min(x0 + 1, P.bw - 1), y1 = min(y0 + 1, P.bh - 1);
+    const float tx = fx - (float)x0, ty = fy - (float)y0;
+    float glow[3];
+    for (int c = 0; c < 3; ++c) {
+      const float a = P.bloom[(y0 * P.bw + x0) * 3 + c] * (1.f - tx) + P.bloom[(y0 * P.bw + x1) * 3 + c] * tx;
+      const float d = P.bloom[(y1 * P.bw + x0) * 3 + c] * (1.f - tx) + P.bloom[(y1 * P.bw + x1) * 3 + c] * tx;
+      glow[c] = fminf((a * (1.f - ty) + d * ty) * P.bloom_gain, 1.f);
+    }
+    r = 1.f - (1.f - r) * (1.f - glow[0]);
+    g = 1.f - (1.f - g) * (1.f - glow[1]);
+    b = 1.f - (1.f - b) * (1.f - glow[2]);
+  }
   const u64 o = (u64)oy * (u64)OW + (u64)ox;
   if (P.fmt == 0) {
     ((u32*)P.out)[o] = ((u32)(r * 255.f + 0.5f) << 16) | ((u32)(g * 255.f + 0.5f) << 8) | (u32)(b * 255.f + 0.5f);
@@ -235,6 +255,54 @@ extern "C" __global__ void ks_tonemap(TP P) {
     unsigned char* q = (unsigned char*)P.out + o * 3;
     q[0] = (unsigned char)(r * 255.f + 0.5f); q[1] = (unsigned char)(g * 255.f + 0.5f); q[2] = (unsigned char)(b * 255.f + 0.5f);
   }
+}
+
+// soft bloom on the brightest regions only: the part of the log density above
+// a threshold goes into a low-res buffer, which is then blurred in two passes
+struct BP {
+  const float* acc_c; const float* acc_h; float* out;
+  int W, H, cell, bw, bh, has_h;
+  float inv_logref, ar, ag, ab, br, bg, bb;
+};
+#define KS_BLOOM_THRESHOLD 0.62f
+
+extern "C" __global__ void ks_bloom_build(BP P) {
+  const int lx = blockIdx.x * 16 + threadIdx.x, ly = blockIdx.y * 16 + threadIdx.y;
+  if (lx >= P.bw || ly >= P.bh) return;
+  const int step = P.cell > 8 ? P.cell / 8 : 1;
+  float r = 0.f, g = 0.f, b = 0.f, n = 0.f;
+  for (int y = 0; y < P.cell; y += step) for (int x = 0; x < P.cell; x += step) {
+    const int sx = lx * P.cell + x, sy = ly * P.cell + y;
+    n += 1.f;
+    if (sx >= P.W || sy >= P.H) continue;
+    const u64 idx = (u64)sy * (u64)P.W + (u64)sx;
+    const float c = P.acc_c[idx];
+    if (!(c > 0.f)) continue;
+    const float al = fminf(log1pf(c) * P.inv_logref, 1.f);
+    const float k = fmaxf(al - KS_BLOOM_THRESHOLD, 0.f) / (1.f - KS_BLOOM_THRESHOLD);
+    if (k <= 0.f) continue;
+    const float hv = P.has_h ? fminf(fmaxf(P.acc_h[idx] / c, 0.f), 1.f) : 0.f;
+    r += k * (P.ar + (P.br - P.ar) * hv); g += k * (P.ag + (P.bg - P.ag) * hv); b += k * (P.ab + (P.bb - P.ab) * hv);
+  }
+  float* o = P.out + (u64)(ly * P.bw + lx) * 3;
+  o[0] = r / n; o[1] = g / n; o[2] = b / n;
+}
+
+struct GP { const float* src; float* dst; int w, h, dx, dy; };
+
+// one direction of a 25-tap gaussian (sigma 6 texels)
+extern "C" __global__ void ks_bloom_blur(GP P) {
+  const int x = blockIdx.x * 16 + threadIdx.x, y = blockIdx.y * 16 + threadIdx.y;
+  if (x >= P.w || y >= P.h) return;
+  float s[3] = {0.f, 0.f, 0.f}, sum = 0.f;
+  for (int k = -12; k <= 12; ++k) {
+    const int sx = max(min(x + k * P.dx, P.w - 1), 0), sy = max(min(y + k * P.dy, P.h - 1), 0);
+    const float g = expf(-(float)(k * k) / 72.f);
+    const float* q = P.src + (u64)(sy * P.w + sx) * 3;
+    s[0] += q[0] * g; s[1] += q[1] * g; s[2] += q[2] * g; sum += g;
+  }
+  float* o = P.dst + (u64)(y * P.w + x) * 3;
+  o[0] = s[0] / sum; o[1] = s[1] / sum; o[2] = s[2] / sum;
 }
 
 struct DP { float* a; float* b; u64 n; float f; int has_b; };
