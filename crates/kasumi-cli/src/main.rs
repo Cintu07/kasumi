@@ -6,6 +6,7 @@ mod export;
 mod grid;
 mod hud;
 mod live;
+mod pane;
 
 use anyhow::Result;
 use common::Args;
@@ -44,6 +45,7 @@ fn main() {
         "evolve" => evolve::evolve(&args),
         "gallery" => evolve::gallery(&args),
         "taste" => evolve::taste_cmd(&args),
+        "pane" => pane::pane(&args),
         other => {
             eprintln!("unknown command '{other}'\n\n{USAGE}");
             std::process::exit(2);
