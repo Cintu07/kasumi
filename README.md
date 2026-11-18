@@ -58,7 +58,7 @@ inputs are `i` (point index), `n` (point count), `t` (seconds), `u` (`i / n`), `
 
 math is `+ - * / % ^` and sin cos tan tanh atan2 sqrt abs fract floor sign min max mix clamp smoothstep mag exp log pow noise rnd.
 
-settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
+settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@bloom`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
 
 a form that reads `px` or `py` runs as an iterated system, and each gpu thread walks its own orbit. `forms/clifford.ks` works this way.
 
