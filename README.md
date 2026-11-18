@@ -46,6 +46,7 @@ video export uses ffmpeg with nvenc. kasumi has only been tested on windows 11 s
 | `kasumi grid <form>` | 4 x 4 live mutations, click to like, right click to breed |
 | `kasumi taste` | trains the taste model on your clicks |
 | `kasumi evolve [seeds] --minutes 480` | evolves forms and writes a gallery page |
+| `kasumi gallery <run> --spacing 1.3` | picks the gallery of a finished run again, higher spacing allows fewer look-alikes |
 | `kasumi pane <plan.json> <out.mp4>` | renders the canvas for a recorded editing session |
 
 keys in the live window are listed under `/`.
@@ -72,7 +73,7 @@ a form that reads `px` or `py` runs as an iterated system, and each gpu thread w
 
 `kasumi-gpu` loads the cuda driver and nvrtc at run time. reload goes through ptx and the driver jit, which measured 2 to 3 times faster here than the cubin path inside nvrtc.
 
-`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings, and `kasumi evolve --novelty-on embed` uses the same embeddings to measure novelty.
+`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, thin, tiny, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings, and `kasumi evolve --novelty-on embed` uses the same embeddings to measure novelty.
 
 ## numbers
 

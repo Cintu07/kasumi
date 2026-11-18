@@ -67,7 +67,8 @@ pub fn evaluate(gpu: &Gpu, st: &Statics, tgt: &mut Target, l: &Live, points: u64
     tgt.reset_exposure();
     let a = render_frame(gpu, st, tgt, l, points, t, false)?;
     let b = render_frame(gpu, st, tgt, l, points, t + 0.6, true)?;
-    let f = features(&luma(&a), &luma(&b), tgt.w as usize, tgt.h as usize);
+    let mut f = features(&luma(&a), &luma(&b), tgt.w as usize, tgt.h as usize);
+    f.chroma = kasumi_explore::features::chroma(&a);
     Ok((f, a))
 }
 

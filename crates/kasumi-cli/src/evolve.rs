@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use kasumi_explore::archive::{Archive, Elite};
+use kasumi_explore::archive::{Archive, Elite, GALLERY_SPACING};
 use kasumi_explore::features::{junk, taste_vec};
 use kasumi_explore::mutate::mutate;
 use kasumi_explore::rng::Rng;
@@ -149,10 +149,15 @@ pub fn evolve(args: &Args) -> Result<()> {
     for l in compile(&gpu, seeds.into_iter().map(Cand::new).collect()) {
         let (f, px) = evaluate(&gpu, &st, &mut scratch, &l, pts, 2.0)?;
         println!(
-            "  seed {} | lit {:.2} fill {:.2} structure {:.2} motion {:.4} | {}",
-            l.cand.form.header.first().map(|h| h.split(':').next().unwrap_or("").trim().to_string()).unwrap_or_else(|| l.cand.id.clone()),
+            "  seed {} {} | lit {:.2} fill {:.2} aspect {:.2} extent {:.2} edge {:.2} chroma {:.2} structure {:.2} motion {:.4} | {}",
+            l.cand.form.header.first().map(|h| h.split(':').next().unwrap_or("").trim().to_string()).unwrap_or_default(),
+            l.cand.id,
             f.lit,
             f.fill,
+            f.aspect,
+            f.extent,
+            f.edge,
+            f.chroma,
             f.structure,
             f.motion,
             junk(&f).map(|j| format!("{j:?}")).unwrap_or("ok".into())
@@ -199,10 +204,11 @@ pub fn evolve(args: &Args) -> Result<()> {
         kept += offer_all(&mut archive, &mut taste, good, gen, novelty_w)?;
         let el = started.elapsed().as_secs_f32();
         let line = format!(
-            "gen {gen:>5} | {:>6.1} min | evaluated {evaluated} | junk {:.0}% | archive {}/64 cells | improvements {kept} | best {:.3}",
+            "gen {gen:>5} | {:>6.1} min | evaluated {evaluated} | junk {:.0}% | archive {}/{} cells | improvements {kept} | best {:.3}",
             el / 60.0,
             junked as f64 / evaluated.max(1) as f64 * 100.0,
             archive.len(),
+            archive.cells.len(),
             archive.ranked().first().map(|e| e.score).unwrap_or(0.0)
         );
         print!("\r{line}   ");
@@ -215,7 +221,7 @@ pub fn evolve(args: &Args) -> Result<()> {
     }
     println!();
     save_archive(&archive, &out)?;
-    gallery_from(&gpu, &st, &archive, &out, top)?;
+    gallery_from(&gpu, &st, &archive, &out, top, GALLERY_SPACING)?;
     Ok(())
 }
 
@@ -246,8 +252,8 @@ fn save_archive(a: &Archive, out: &Path) -> Result<()> {
 }
 
 /// Render looping sprite strips for the best forms and write the gallery page.
-fn gallery_from(gpu: &Gpu, st: &Statics, a: &Archive, out: &Path, top: usize) -> Result<()> {
-    let ranked: Vec<&Elite> = a.ranked().into_iter().take(top).collect();
+fn gallery_from(gpu: &Gpu, st: &Statics, a: &Archive, out: &Path, top: usize, spacing: f32) -> Result<()> {
+    let ranked = a.diverse(top, spacing);
     let dir = out.join("gallery");
     std::fs::create_dir_all(dir.join("sprites"))?;
     const FRAMES: usize = 32;
@@ -296,12 +302,23 @@ pub fn gallery(args: &Args) -> Result<()> {
     let gpu = Gpu::new()?;
     let st = Statics::new(&gpu)?;
     let elites: Vec<Elite> = serde_json::from_str(&std::fs::read_to_string(run.join("archive.json"))?)?;
+    let mut scratch = Target::new(&gpu, THUMB, THUMB, 1, 0)?;
     let mut a = Archive::new();
-    for (k, e) in elites.into_iter().enumerate() {
+    for (k, mut e) in elites.into_iter().enumerate() {
+        // descriptors are not saved with the archive, so measure each form again
+        let Ok(form) = kasumi_lang::parse(&e.text) else { continue };
+        let lives = compile(&gpu, vec![Cand::new(form)]);
+        let Some(l) = lives.first() else { continue };
+        let (f, _) = evaluate(&gpu, &st, &mut scratch, l, 1_500_000, 2.0)?;
+        if junk(&f).is_some() {
+            continue;
+        }
+        e.vec = f.vec;
         let n = a.cells.len();
         a.cells[k % n] = Some(e);
     }
-    gallery_from(&gpu, &st, &a, &run, args.u32_or("top", 100)? as usize)
+    a.rescore(args.f32_or("novelty", 0.6)?);
+    gallery_from(&gpu, &st, &a, &run, args.u32_or("top", 100)? as usize, args.f32_or("spacing", GALLERY_SPACING)?)
 }
 
 pub fn taste_cmd(_args: &Args) -> Result<()> {

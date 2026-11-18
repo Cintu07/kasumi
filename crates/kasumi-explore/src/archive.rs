@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 use crate::features::{dist, Feat};
 
 pub const BINS: usize = 8;
+/// Mean saturation above which a form counts as coloured.
+pub const COLOUR_CHROMA: f32 = 0.15;
+/// Gallery picks must be this far apart, in units of the archive's typical spacing.
+pub const GALLERY_SPACING: f32 = 1.3;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Elite {
@@ -43,12 +47,15 @@ pub fn cell_of(f: &Feat) -> usize {
     // lit is roughly 0.02..0.6 -> log-ish bins
     let l = ((f.lit.max(0.02).ln() - 0.02f32.ln()) / (0.6f32.ln() - 0.02f32.ln()) * BINS as f32) as usize;
     let s = ((f.spread / 0.7).clamp(0.0, 0.999) * BINS as f32) as usize;
-    l.min(BINS - 1) * BINS + s.min(BINS - 1)
+    // colour forms get their own layer: the descriptor only sees luminance, so
+    // without it a white form and its coloured twin fight over one cell
+    let layer = (f.chroma > COLOUR_CHROMA) as usize;
+    layer * BINS * BINS + l.min(BINS - 1) * BINS + s.min(BINS - 1)
 }
 
 impl Archive {
     pub fn new() -> Archive {
-        Archive { cells: vec![None; BINS * BINS], scale: 0.0 }
+        Archive { cells: vec![None; 2 * BINS * BINS], scale: 0.0 }
     }
 
     pub fn elites(&self) -> impl Iterator<Item = &Elite> {
@@ -114,5 +121,49 @@ impl Archive {
         let mut v: Vec<&Elite> = self.elites().collect();
         v.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
         v
+    }
+
+    /// The best forms, best first, skipping any that look like one already
+    /// picked. Forms reloaded from disk have no descriptor and are all kept.
+    pub fn diverse(&self, top: usize, spacing: f32) -> Vec<&Elite> {
+        let min = self.scale * spacing;
+        let mut picked: Vec<&Elite> = Vec::new();
+        for e in self.ranked() {
+            if picked.len() == top {
+                break;
+            }
+            if e.vec.is_empty() || picked.iter().all(|p| dist(&p.vec, &e.vec) >= min) {
+                picked.push(e);
+            }
+        }
+        picked
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn elite(id: &str, score: f32, vec: Vec<f32>) -> Elite {
+        Elite { id: id.into(), text: String::new(), score, taste: 0.0, novelty: 0.0, lit: 0.0, spread: 0.0, generation: 0, vec }
+    }
+
+    #[test]
+    fn colour_forms_do_not_compete_with_their_white_twins() {
+        let white = Feat { lit: 0.2, spread: 0.3, ..Feat::default() };
+        let colour = Feat { chroma: 0.6, ..white.clone() };
+        assert_ne!(cell_of(&white), cell_of(&colour));
+        assert!(cell_of(&colour) < Archive::new().cells.len());
+    }
+
+    #[test]
+    fn gallery_skips_near_copies_of_better_forms() {
+        let mut a = Archive::new();
+        a.scale = 1.0;
+        a.cells[0] = Some(elite("best", 3.0, vec![0.0, 0.0]));
+        a.cells[1] = Some(elite("copy", 2.0, vec![0.1, 0.0]));
+        a.cells[2] = Some(elite("other", 1.0, vec![2.0, 0.0]));
+        let ids: Vec<&str> = a.diverse(10, GALLERY_SPACING).iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(ids, ["best", "other"]);
     }
 }
