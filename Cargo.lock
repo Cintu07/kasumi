@@ -255,41 +255,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "kasumi-cli"
+name = "kasumi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "font8x8",
- "kasumi-explore",
- "kasumi-gpu",
- "kasumi-lang",
+ "libloading",
  "minifb",
  "png",
  "serde",
  "serde_json",
 ]
-
-[[package]]
-name = "kasumi-explore"
-version = "0.1.0"
-dependencies = [
- "kasumi-lang",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "kasumi-gpu"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "kasumi-lang",
- "libloading",
-]
-
-[[package]]
-name = "kasumi-lang"
-version = "0.1.0"
 
 [[package]]
 name = "lazy_static"

@@ -1,8 +1,0 @@
-[package]
-name = "kasumi-lang"
-description = "kasumi formula language: parser, ssa ir, passes, cuda codegen, cpu reference interpreter"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-
-[dependencies]

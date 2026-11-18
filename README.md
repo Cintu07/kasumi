@@ -4,6 +4,8 @@ kasumi compiles short math formulas into cuda kernels and draws the result as te
 
 ![code and result](docs/img/split.png)
 
+the gallery is at [cintu07.github.io/kasumi](https://cintu07.github.io/kasumi/).
+
 a form is a text file, and this one has 10 lines.
 
 ```text
@@ -19,7 +21,7 @@ y = r * sin(v * 2 + s * 3) * 0.95
 h = sin(s * pi)
 ```
 
-save the file and the live window recompiles it in about 175 ms. if the new version does not compile, the old one keeps running and the error shows on screen.
+save the file and the live window recompiles it in about 190 ms. if the new version does not compile, the old one keeps running and the error shows on screen.
 
 ## build
 
@@ -44,10 +46,8 @@ video export uses ffmpeg with nvenc. kasumi has only been tested on windows 11 s
 | `kasumi bench [forms]` | times the three accumulation kernels |
 | `kasumi ptx <form>` | writes the generated cuda and ptx next to the form |
 | `kasumi grid <form>` | 4 x 4 live mutations, click to like, right click to breed |
-| `kasumi taste` | trains the taste model on your clicks |
-| `kasumi evolve [seeds] --minutes 480` | evolves forms and writes a gallery page |
+| `kasumi evolve [seeds] --minutes 30` | evolves forms and writes a gallery page |
 | `kasumi gallery <run> --spacing 1.3` | picks the gallery of a finished run again, higher spacing allows fewer look-alikes |
-| `kasumi pane <plan.json> <out.mp4>` | renders the canvas for a recorded editing session |
 
 keys in the live window are listed under `/`.
 
@@ -61,7 +61,7 @@ math is `+ - * / % ^` and sin cos tan tanh atan2 sqrt abs fract floor sign min m
 
 settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@bloom`, `@de`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
 
-`@de 12` turns on adaptive density estimation, which blurs sparse pixels by up to 12 pixels and leaves dense ones sharp. it removes grain at low point counts and softens single threads, so it is off by default.
+`@de 12` turns on adaptive density estimation, which blurs sparse pixels by up to 12 pixels and leaves dense ones alone. it removes grain at low point counts and softens single threads, so it is off by default.
 
 a form that reads `px` or `py` runs as an iterated system, and each gpu thread walks its own orbit. `forms/clifford.ks` works this way.
 
@@ -69,11 +69,11 @@ a form that reads `px` or `py` runs as an iterated system, and each gpu thread w
 
 ## how it works
 
-`kasumi-lang` has a hand-written pratt parser and an ssa ir. values are hash-consed while the ir is built, so common subexpressions merge on the way in. it also folds constants, removes dead code and moves anything that does not depend on the point out of the kernel. the cpu computes those values once per frame.
+a form goes through `parser.rs`, `ir.rs` and `codegen.rs`, then `cuda.rs` compiles it and `render.rs` draws it. the parser is a hand-written pratt parser and the ir is ssa. values are hash-consed while the ir is built, so common subexpressions merge on the way in. it also folds constants, removes dead code and moves anything that does not depend on the point out of the kernel. the cpu computes those values once per frame, and `interp.rs` is the reference the gpu output is checked against.
 
-`kasumi-gpu` loads the cuda driver and nvrtc at run time. reload goes through ptx and the driver jit, which measured 2 to 3 times faster here than the cubin path inside nvrtc.
+`cuda.rs` loads the cuda driver and nvrtc at run time. reload goes through ptx and the driver jit, which measured 2 to 3 times faster here than the cubin path inside nvrtc. the kernels are in `src/kernels`, and `args.rs` declares their arguments once for both rust and cuda.
 
-`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, thin, tiny, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings, and `kasumi evolve --novelty-on embed` uses the same embeddings to measure novelty.
+`mutate.rs` changes the syntax tree, `features.rs` throws out blank, blown out, frozen, noisy, thin, tiny, flat and cropped forms, and `archive.rs` keeps the best form per style cell in a map-elites archive. `taste/clip.py` is an optional taste model on clip embeddings. train it with `python taste/clip.py train`, then use `kasumi evolve --taste clip`. `--novelty-on embed` uses the same embeddings to measure novelty.
 
 ## numbers
 
@@ -103,6 +103,8 @@ rtx 5060 laptop, 26 sms, 100m points per frame, median of 5 frames. values are b
 
 tile binning loses on smooth forms and wins when points scatter across a buffer bigger than the l2 cache. `live` and `render` time all three kernels on each form and use the fastest.
 
-on 540 judgements from one person (56 likes), the clip taste model ranks a held-out like above a skip 77.8% of the time over 5 random splits, and 73% of the time when whole screens are held out. no full overnight run has been judged.
+on 540 judgements from one person (56 likes), the clip taste model ranks a held-out like above a skip 77.8% of the time over 5 random splits, and 73% of the time when whole screens are held out. all 540 are on the knot and rose seeds, so those numbers say nothing about the other four.
+
+an 8 hour run tested 185,016 forms and its automatic gallery was weak, with 19 picks and about 6 good ones. the published gallery was picked by eye from 549 distinct forms.
 
 kasumi is released under the mit license, see [LICENSE](LICENSE) for the text.

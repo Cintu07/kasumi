@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>kasumi gallery</title>
+<style>
+:root{--bg:#070707;--fg:#d8d4cc;--dim:#77736c;--line:#1c1b19}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+header{padding:40px 24px 8px;max-width:1400px;margin:auto}h1{font-weight:400;letter-spacing:.3em;margin:0 0 6px}
+header p{color:var(--dim);margin:0}
+main{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:20px;padding:24px;max-width:1400px;margin:auto}
+figure{margin:0;border:1px solid var(--line);background:#000}
+.clip{width:100%;aspect-ratio:1;background-size:3200% 100%;background-repeat:no-repeat;animation:play 2.6s steps(31) infinite alternate}
+@keyframes play{from{background-position:0 0}to{background-position:100% 0}}
+figcaption{display:flex;justify-content:space-between;padding:8px 10px;color:var(--dim);font-size:12px}
+details{padding:0 10px 10px}summary{cursor:pointer;color:var(--dim);font-size:12px}
+pre{white-space:pre-wrap;font-size:11px;color:var(--fg);margin:8px 0 0}
+</style></head><body>
+<header><h1>kasumi</h1><p>{{COUNT}} forms. every frame is millions of points, every form is a few lines of math.</p></header>
+<main>
+{{CARDS}}
+</main></body></html>

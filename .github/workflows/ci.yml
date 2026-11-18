@@ -16,6 +16,6 @@ jobs:
             ~/.cargo/registry
             target
           key: cargo-${{ hashFiles('Cargo.lock') }}
-      # the gpu crates load cuda at run time, so everything builds on a machine with no gpu
+      # cuda is loaded at run time, so everything builds and tests on a machine with no gpu
       - run: cargo build --release --locked
-      - run: cargo test --release --locked -p kasumi-lang -p kasumi-explore
+      - run: cargo test --release --locked
