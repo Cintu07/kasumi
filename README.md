@@ -1,178 +1,105 @@
 # kasumi 霞
 
-A GPU engine for generative point art. A form is a few lines of math that say where point `i` sits at time `t`. kasumi compiles the form to a CUDA kernel at run time and draws tens of millions to billions of points per frame. Brightness is the log of how many points land on each pixel (the fractal-flame display method), so dense regions glow and single threads stay visible.
+kasumi compiles short math formulas into cuda kernels and draws the result as tens of millions of points per frame. brightness is the log of how many points hit a pixel, which is the display method from the fractal flame algorithm. it runs on an rtx 5060 laptop.
 
-![forms](docs/img/forms.png)
+![code and result](docs/img/split.png)
+
+a form is a text file, and this one has 10 lines.
 
 ```text
-# silk: four hundred strands, each a slow wave, braided by time
-@points 20m
-param strands = 400
-param k = 3
-let s = floor(u * strands) / strands
-let v = fract(u * strands) * tau
-let w = sin(v * k + s * 6 + t * 0.4)
-let r = 0.5 + 0.22 * w * cos(s * tau * 2 - t * 0.3)
-x = r * cos(v + 0.6 * s + 0.15 * sin(t * 0.2)) * 1.25
-y = r * sin(v * 2 + s * 3) * 0.6 + 0.08 * sin(s * tau * 3 + t)
+@points 60m
+@palette ice
+let s = floor(u * 400) / 400
+let v = fract(u * 400) * tau
+let w = sin(v * 5 + s * 6 + t * 0.4)
+let r = 0.45 + 0.2 * w * cos(s * tau * 2 - t * 0.3)
+let k = noise(s * 3, t * 0.2) * 0.8
+x = r * cos(v + 0.6 * s + k)
+y = r * sin(v * 2 + s * 3) * 0.95
+h = sin(s * pi)
 ```
 
-![silk detail at 4k](docs/img/silk_detail.png)
+save the file and the live window recompiles it in about 175 ms. if the new version does not compile, the old one keeps running and the error shows on screen.
 
-## Quick start
+## build
 
-Requirements: an NVIDIA GPU and driver, Rust, and NVRTC. NVRTC is the runtime CUDA compiler. The full CUDA toolkit is not needed. Video export also needs ffmpeg (`winget install Gyan.FFmpeg`); kasumi finds a winget install even before PATH refreshes.
+you need an nvidia gpu, rust, and nvrtc (the runtime cuda compiler). the cuda toolkit is not needed.
 
 ```sh
-python -m pip install --target .cuda nvidia-cuda-nvrtc-cu12   # nvrtc only, ~90 MB
+python -m pip install --target .cuda nvidia-cuda-nvrtc-cu12
 cargo build --release
-./target/release/kasumi info
-./target/release/kasumi live forms/silk.ks        # edit the file and save: it recompiles live
+./target/release/kasumi live forms/silk.ks
 ```
+
+video export uses ffmpeg with nvenc. kasumi has only been tested on windows 11 so far.
+
+## commands
 
 | command | what it does |
 |---|---|
-| `kasumi live <form>` | Live window with hot reload. If a save fails to compile, the old form keeps running and the error is shown on screen. |
-| `kasumi render <form> --res 4k --points 200m --sub 8` | 4K still with 8 motion-blur subframes (1.6 billion points). |
-| `kasumi render <form> --seconds 10 --fps 60` | Video via ffmpeg + NVENC. The default is H.264, which plays everywhere. `--codec hevc` gives a 10-bit HEVC master (Windows needs the paid HEVC extension to play it) and `--codec av1` gives 10-bit AV1. Without ffmpeg it writes PNG frames. |
-| `kasumi check <forms>` | Compares GPU point positions against the CPU reference interpreter. |
-| `kasumi bench [forms]` | Naive vs warp vs tile-binning accumulation, and checks that all three produce the same image. |
-| `kasumi ptx <form>` | Writes out the generated CUDA and PTX, plus IR pass statistics. |
-| `kasumi grid <form>` | 4×4 live mutations. Click to like, right-click to breed. |
-| `kasumi taste` | Trains the taste model on your clicks and reports held-out ranking accuracy. |
-| `kasumi evolve [seeds] --minutes 480` | Overnight evolution, ending in `runs/<id>/gallery/index.html`. Add `--taste siglip` to score with the image-embedding model. |
+| `kasumi live <form>` | live window with hot reload |
+| `kasumi render <form> --res 4k --points 200m --sub 8` | 4k still with motion blur |
+| `kasumi render <form> --seconds 10` | video, h264 by default, `--codec hevc` for a 10-bit master |
+| `kasumi check <forms>` | compares gpu output with the cpu reference interpreter |
+| `kasumi bench [forms]` | times the three accumulation kernels |
+| `kasumi ptx <form>` | writes the generated cuda and ptx next to the form |
+| `kasumi grid <form>` | 4 x 4 live mutations, click to like, right click to breed |
+| `kasumi taste` | trains the taste model on your clicks |
+| `kasumi evolve [seeds] --minutes 480` | evolves forms and writes a gallery page |
+| `kasumi pane <plan.json> <out.mp4>` | renders the canvas for a recorded editing session |
 
-### Live window keys
+keys in the live window are listed under `/`.
 
-space pause · r reset · ←/→ time speed · ↑/↓ points ×2 · m accumulation kernel · a autotune · f fast-math · p palette · t feedback trails · b motion blur · wheel zoom · drag pan · s screenshot · e 4K still of this exact moment (1.6 billion points) · h HUD · / help
+## the language
 
-![live](docs/img/live.png)
+inputs are `i` (point index), `n` (point count), `t` (seconds), `u` (`i / n`), `r1` and `r2` (random per point), and `px` and `py` (the previous point).
 
-## The language
+`x` and `y` are required. `z` drives depth of field, `b` is brightness and `h` is a 0 to 1 hue.
 
-- **Inputs:** `i` (point index), `n` (point count), `t` (seconds), `u = i / n`, `r1` and `r2` (two independent uniform randoms per point, hashed from the integer index), and `px` / `py` (the previous point; see attractors below).
-- **Outputs:** `x` and `y` are required. `z` is optional and drives depth of field, `b` is brightness weight, and `h` is a 0–1 hue mapped through the palette.
-- **Statements:** `let name = expr` for intermediates. `param name = 3.2` for constants the explorer can tune.
-- **Math:** `+ - * / % ^`, sin cos tan tanh atan2 sqrt abs fract floor sign min max mix clamp smoothstep mag exp log pow, `noise(x, y)` (simplex), and `rnd(x)`.
-- **Settings:** `@points 20m`, `@palette ember` (mono ember ice sakura moss ink dusk jade), `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@iters`, `@warmup`, `@fastmath on`.
-- **Attractor mode:** a form that reads `px` / `py` becomes an iterated system. Each GPU thread walks its own chaotic orbit for `@iters` steps. This is how `forms/clifford.ks` works.
-- **Precision:** `i` is a float32, so it is exact only up to 16.7M. Use `u`, `r1` or `r2` for smooth parameterisations at high point counts.
+math is `+ - * / % ^` and sin cos tan tanh atan2 sqrt abs fract floor sign min max mix clamp smoothstep mag exp log pow noise rnd.
 
-Errors point at the exact spot and suggest fixes:
+settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
 
-```text
-9:9: unknown function 'sinn' (did you mean 'sin'?)
-  let w = sinn(v * k + s * 6 + t * 0.4)
-          ^
-```
+a form that reads `px` or `py` runs as an iterated system, and each gpu thread walks its own orbit. `forms/clifford.ks` works this way.
 
-## How it works
+`i` is a float32 and is only exact up to 16.7 million, so use `u`, `r1` or `r2` at high point counts.
 
-```text
-form.ks ─► pratt parser ─► AST ─► SSA IR ─► passes ─► CUDA C ─► NVRTC ─► PTX ─► driver JIT ─► kernel
-                            │                 │
-                            │                 └─ fold · CSE (hash-consing) · dead code · hoisting
-                            └─ the mutator edits this tree and prints it back as a form file
-```
+## how it works
 
-- **Compiler (`kasumi-lang`).** A hand-written parser and an SSA IR. Common-subexpression elimination comes for free from hash-consing, and constant folding runs while the IR is built. Everything that does not depend on the point (`t`, params, anything built only from them) is hoisted out of the kernel. The CPU evaluates those values once per frame, or per motion-blur subframe, and the kernel reads them from a small table. A CPU interpreter of the same IR, written in f32 with the same hash and noise code as the CUDA prelude, is the correctness reference.
-- **Runtime (`kasumi-gpu`).** Loads the CUDA driver API and NVRTC dynamically, so the build needs no CUDA toolkit. Every launch takes one `repr(C)` struct, mirrored in CUDA.
-- **Explorer (`kasumi-explore`).**
-  - Mutations work on the syntax tree: nudge a param or a literal, swap a function for a sibling, add or remove a wave term, cross over with another form, change palette or colour.
-  - Junk filters reject forms that are blank, blown out, frozen, noise, a flat slab, or cropped by the frame edge.
-  - The taste model is logistic regression on image features.
-  - The archive is MAP-Elites: one champion per style cell, so evolution cannot collapse into one look.
+`kasumi-lang` has a hand-written pratt parser and an ssa ir. values are hash-consed while the ir is built, so common subexpressions merge on the way in. it also folds constants, removes dead code and moves anything that does not depend on the point out of the kernel. the cpu computes those values once per frame.
 
-![grid](docs/img/grid.png)
+`kasumi-gpu` loads the cuda driver and nvrtc at run time. reload goes through ptx and the driver jit, which measured 2 to 3 times faster here than the cubin path inside nvrtc.
 
-## Results on an RTX 5060 Laptop GPU (26 SMs, sm_120)
+`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings.
 
-| PRD check | target | measured |
-|---|---|---|
-| live preview | 1080p, 60 fps, ≥20M points | **59 fps at 20M points** (14–32 Gpts/s depending on form) |
-| 4K export | 200M points × 8 subframes, ≥1 frame/s | **2–20 frames/s** for every form (silk 50 ms per frame, clifford 376 ms, ink 512 ms). End to end, including the 10-bit HEVC encode, silk 4K video runs at **13 frames/s**, so a 60-second 4K reel takes about 4.5 minutes. |
-| edit to screen | under 300 ms | **~175 ms** on new code (was 320 ms; see below) |
-| correctness | GPU matches the CPU reference | **100% of 10,000 sampled points**, max relative error ≤ 2e-7 (strict), all 6 forms |
-| tile binning | ≥3× naive points/s | **4.9× (clifford) and 2.9× (ink) at 4K export**, but 0.2–0.6× on coherent forms. See findings. |
-| taste model | held-out AUC ≥ 75% | not measured yet: needs about 500 of your clicks (`kasumi grid`, then `kasumi taste`) |
-| overnight run | ≥50 forms you'd post | not run yet. A 10-minute run evaluated 1,440 forms and filled 43 of 64 style cells. |
+## numbers
 
-### Accumulation kernels
+rtx 5060 laptop, 26 sms, 100m points per frame, median of 5 frames. values are billions of points per second.
 
-Values are Gpts/s, the median of 5 frames at 100M points per frame. "match" means the bin-mode image is identical to naive.
+3840 x 2160 accumulation buffer:
 
-**3840×2160 accumulation buffer (33 MB):**
-
-| form | lit | naive | warp | bin | bin vs naive |
-|---|---|---|---|---|---|
-| silk | 12% | 23.9 | **27.9** | 8.1 | 0.34× |
-| rose (22,506-point hot pixel) | 11% | 15.5 | **16.6** | 5.3 | 0.34× |
-| knot | 14% | 14.3 | **17.2** | 6.3 | 0.44× |
-| clifford (attractor) | 29% | **6.3** | **6.3** | 5.2 | 0.82× |
-| ink (random scatter) | 71% | 2.2 | 2.2 | **4.0** | **1.82×** |
-
-**7680×4320 accumulation buffer, which is 4K with 2× supersampling (133 MB):**
-
-| form | naive | warp | bin | bin vs naive |
+| form | naive | warp | tile bin | bin / naive |
 |---|---|---|---|---|
-| silk | 23.3 | **29.2** | 7.8 | 0.34× |
-| clifford | 0.92 | 0.83 | **4.52** | **4.93×** |
-| ink | 1.26 | 1.26 | **3.68** | **2.93×** |
+| silk | 21.5 | 28.3 | 8.6 | 0.40 |
+| rose | 15.8 | 15.3 | 5.6 | 0.35 |
+| knot | 16.6 | 16.2 | 6.7 | 0.40 |
+| tiny | 27.1 | 20.9 | 6.3 | 0.23 |
+| clifford | 6.9 | 6.8 | 5.6 | 0.81 |
+| ink | 2.2 | 2.2 | 4.0 | 1.82 |
 
-In every row, the bin-mode image matches naive. Unweighted forms match bit-exactly. Forms with a brightness weight `b` differ by up to 1e-4 relative, because float sums are added in a different order.
+7680 x 4320 accumulation buffer (4k with 2x supersampling):
 
-### Findings (the blog post)
+| form | naive | warp | tile bin | bin / naive |
+|---|---|---|---|---|
+| silk | 23.4 | 33.2 | 8.1 | 0.35 |
+| rose | 12.8 | 18.7 | 6.1 | 0.48 |
+| knot | 12.7 | 14.0 | 7.1 | 0.56 |
+| tiny | 25.9 | 17.9 | 5.5 | 0.21 |
+| clifford | 0.92 | 0.83 | 4.52 | 4.93 |
+| ink | 1.26 | 1.26 | 3.68 | 2.93 |
 
-1. **Contention is not the problem; locality is.** The PRD expected hot pixels to be the bottleneck. Rose piles 22,506 points onto one pixel and naive atomics still run at 15 Gpts/s. Consecutive points along a curve hit neighbouring addresses, and L2 merges those atomics. Ink, the form *without* hot spots, is the slowest: random scatter means one cache-line miss per point.
-2. **Coherent forms are compute-bound.** On silk, binning's first pass alone (one formula evaluation per point) costs about as much as the whole naive render. No multi-pass scheme can win there.
-3. **Binning wins once the image outgrows L2.** At 4K with 2× supersampling, the 133 MB buffer is 4× the L2 cache. Random atomics then go to DRAM and binning wins 2.9–4.9×.
-4. **Binning v1 evaluated the formula twice** (count, then scatter). v2 stages each point's packed key during the count pass and makes scatter a form-independent data-movement kernel. That took ink from 1.56× to 1.84×. Moving the count and scatter passes to 512-thread blocks added another 5–15%: each block holds a 40 KB tile histogram, so 256-thread blocks left SMs at low occupancy. The remaining limit is scatter coalescing. Diffuse points touch about 1,000 of 8,160 tiles per round, so their writes cannot merge. Fixing that means coarser buckets plus a second sorting pass, and accumulation tiles larger than the 48 KB default shared memory. That is the v1 kernel project.
-5. **Warp aggregation** (`__match_any_sync`, one atomic per distinct pixel in a warp) is a cheap +10–45% on coherent forms. No single kernel wins everywhere, so `live` and `render` autotune per form by timing all three.
-6. **Hot-reload latency was dominated by ptxas.** It wasn't parsing or NVRTC's front end. The front end takes ~13 ms; ptxas inside NVRTC takes 170–290 ms. Changes that reached 175 ms:
-   - emit PTX and let the driver JIT it (2–3× faster than NVRTC's cubin path)
-   - inline the formula once per kernel instead of twice (warmup and main loops fused)
-   - leave the tile-binning kernels out of the hot path and compile them on demand
+tile binning loses on smooth forms and wins when points scatter across a buffer bigger than the l2 cache. `live` and `render` time all three kernels on each form and use the fastest.
 
-   Both NVRTC and the driver keep source-keyed caches, so a re-save of unchanged kernel code takes about 15 ms. Benchmark only with genuinely new code.
+the taste model has not been measured on real clicks yet, and no full overnight run has been judged.
 
-## Changes from the PRD
-
-- **Own FFI instead of `cudarc`.** About 150 lines of dynamic driver/NVRTC bindings, with no version coupling. **`minifb` instead of `winit` + `pixels`**, which is simpler for a CPU-copied frame (that is the PRD's own "start with copying" plan).
-- **Two taste models.** `kasumi taste` trains a Rust logistic regression on hand-built image features (layout, radial profile, gradient orientation, symmetry), and `kasumi grid` uses it. The PRD's SigLIP/CLIP model is the Python sidecar below, used by `evolve --taste siglip`. Both train from the same `explore/clicks.jsonl`.
-- **Gallery clips.** "Looping clips" are CSS-animated PNG sprite strips, so the gallery needs no video encoder and is one static folder.
-- **Filter thresholds.** "Blown out" requires a bright frame as well as >60% lit pixels, so deliberate full-frame forms like ink survive. A "flat slab" filter was added because early evolution kept producing solid rectangles.
-
-## Additions beyond the PRD
-
-- **Attractor mode** (`px` / `py`): strange attractors and iterated systems, the real flame look.
-- **Feedback trails** (`t` key or `@trail 0.9`): the image decays instead of clearing.
-- **Live kernel switching and autotune**, with the speed of each kernel shown in the HUD.
-- **One-key 4K still of the current moment** (`e`).
-- **Hue packing.** The accumulation buffer stores count + hue-sum, not RGB, and the palette is applied in the tone map. That halves the bandwidth.
-
-## Image-embedding taste model (SigLIP / CLIP)
-
-```sh
-python -m venv .venv
-.venv/Scripts/python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-.venv/Scripts/python -m pip install open_clip_torch scikit-learn pillow numpy
-
-.venv/Scripts/python taste/siglip.py compare          # siglip vs clip on your clicks (the PRD's open question)
-.venv/Scripts/python taste/siglip.py train --model siglip
-kasumi evolve --taste siglip --minutes 480
-```
-
-Embeddings are cached per thumbnail in `explore/`. Evolve keeps one sidecar process alive and scores each batch's thumbnails in one round trip.
-
-## Layout
-
-```text
-crates/kasumi-lang     parser, ir, passes, cuda codegen, cpu interpreter (+ tests)
-crates/kasumi-gpu      dynamic cuda/nvrtc ffi, accumulation kernels, tone map
-crates/kasumi-explore  mutation, features, filters, taste model, archive (+ tests)
-crates/kasumi-cli      live, render, bench, check, ptx, grid, taste, evolve, gallery
-taste/siglip.py        image-embedding taste sidecar
-forms/                 seed forms
-```
-
-`KASUMI_PROF=1` prints per-stage timings for tile binning and hot reload.
+kasumi is released under the mit license, see [LICENSE](LICENSE) for the text.
