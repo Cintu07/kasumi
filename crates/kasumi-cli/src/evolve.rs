@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use kasumi_explore::archive::{Archive, Elite, GALLERY_SPACING};
+use kasumi_explore::archive::{family, Archive, Elite, GALLERY_SPACING};
 use kasumi_explore::features::{junk, taste_vec};
 use kasumi_explore::mutate::mutate;
 use kasumi_explore::rng::Rng;
@@ -93,9 +93,11 @@ impl Scorer {
                 stdin.write_all(req.as_bytes())?;
                 stdin.flush()?;
                 let mut out = Vec::with_capacity(items.len());
-                for (f, _, _) in items {
+                for (f, _, id) in items {
                     let mut line = String::new();
                     std::io::BufRead::read_line(stdout, &mut line)?;
+                    // scored thumbnails are never read again, and a long run writes thousands
+                    let _ = std::fs::remove_file(dir.join(format!("{id}.png")));
                     let mut parts = line.split_whitespace();
                     let side: f32 = parts.next().context("empty line from taste sidecar")?.parse().context("bad score from taste sidecar")?;
                     let t = if *taste_from_sidecar { side } else { builtin.as_ref().map(|m| m.score(&taste_vec(f))).unwrap_or(0.5) };
@@ -173,14 +175,20 @@ pub fn evolve(args: &Args) -> Result<()> {
     while started.elapsed().as_secs_f32() < minutes * 60.0 && gen < max_gens {
         gen += 1;
         let elites: Vec<Elite> = archive.elites().cloned().collect();
+        let mut families: Vec<&str> = elites.iter().map(|e| family(&e.text)).collect();
+        families.sort_unstable();
+        families.dedup();
         let mut cands = Vec::with_capacity(batch);
         let mut guard = 0;
         while cands.len() < batch && guard < batch * 10 {
             guard += 1;
-            // tournament of 3 for the parent, any elite as crossover donor
-            let mut p = &elites[rng.below(elites.len())];
+            // every seed family breeds equally often, or the strongest one takes
+            // over the run. tournament of 3 inside it, any elite as crossover donor
+            let fam = families[rng.below(families.len())];
+            let pool: Vec<&Elite> = elites.iter().filter(|e| family(&e.text) == fam).collect();
+            let mut p = pool[rng.below(pool.len())];
             for _ in 0..2 {
-                let q = &elites[rng.below(elites.len())];
+                let q = pool[rng.below(pool.len())];
                 if q.score > p.score {
                     p = q;
                 }

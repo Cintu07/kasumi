@@ -12,6 +12,16 @@ pub const BINS: usize = 8;
 pub const COLOUR_CHROMA: f32 = 0.15;
 /// Gallery picks must be this far apart, in units of the archive's typical spacing.
 pub const GALLERY_SPACING: f32 = 1.3;
+/// Most archive cells one seed family may hold.
+const MAX_FAMILY_CELLS: usize = 32;
+/// A gallery of n forms shows at most n / this from one seed family.
+const GALLERY_FAMILY_DIVISOR: usize = 5;
+
+/// The seed a form descends from: mutation keeps the `# name: ...` header line.
+pub fn family(text: &str) -> &str {
+    let first = text.lines().next().unwrap_or("");
+    first.strip_prefix('#').map_or("", |h| h.split(':').next().unwrap_or("").trim())
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Elite {
@@ -108,13 +118,21 @@ impl Archive {
     /// Insert if the cell is empty or this one scores higher. Returns true if kept.
     pub fn offer(&mut self, e: Elite, f: &Feat) -> bool {
         let c = cell_of(f);
-        match &self.cells[c] {
-            Some(old) if old.score >= e.score => false,
-            _ => {
-                self.cells[c] = Some(e);
-                true
+        let fam = family(&e.text);
+        let members = |name: &str| self.elites().filter(|o| family(&o.text) == name).count();
+        if let Some(old) = &self.cells[c] {
+            let old_fam = family(&old.text);
+            // the last form of a family stays, or that whole line of forms is lost
+            if old.score >= e.score || (old_fam != fam && members(old_fam) == 1) {
+                return false;
             }
         }
+        let grows = self.cells[c].as_ref().map_or(true, |old| family(&old.text) != fam);
+        if grows && members(fam) >= MAX_FAMILY_CELLS {
+            return false;
+        }
+        self.cells[c] = Some(e);
+        true
     }
 
     pub fn ranked(&self) -> Vec<&Elite> {
@@ -124,15 +142,18 @@ impl Archive {
     }
 
     /// The best forms, best first, skipping any that look like one already
-    /// picked. Forms reloaded from disk have no descriptor and are all kept.
+    /// picked or whose seed family already has its share of the page.
     pub fn diverse(&self, top: usize, spacing: f32) -> Vec<&Elite> {
         let min = self.scale * spacing;
+        let share = (top / GALLERY_FAMILY_DIVISOR).max(1);
         let mut picked: Vec<&Elite> = Vec::new();
         for e in self.ranked() {
             if picked.len() == top {
                 break;
             }
-            if e.vec.is_empty() || picked.iter().all(|p| dist(&p.vec, &e.vec) >= min) {
+            let fam = family(&e.text);
+            let room = picked.iter().filter(|p| family(&p.text) == fam).count() < share;
+            if room && (e.vec.is_empty() || picked.iter().all(|p| dist(&p.vec, &e.vec) >= min)) {
                 picked.push(e);
             }
         }
@@ -154,6 +175,52 @@ mod tests {
         let colour = Feat { chroma: 0.6, ..white.clone() };
         assert_ne!(cell_of(&white), cell_of(&colour));
         assert!(cell_of(&colour) < Archive::new().cells.len());
+    }
+
+    fn in_family(name: &str, id: &str, score: f32) -> Elite {
+        Elite { text: format!("# {name}: a form\nx = u\ny = u\n"), ..elite(id, score, vec![]) }
+    }
+
+    /// A feature set that lands in archive cell `k` of the first few lit bins.
+    fn feat_for(k: usize) -> Feat {
+        let lit = 0.02 * (0.6f32 / 0.02).powf((k / BINS) as f32 / BINS as f32 + 0.01);
+        Feat { lit, spread: (k % BINS) as f32 / BINS as f32 * 0.7 + 0.01, ..Feat::default() }
+    }
+
+    #[test]
+    fn family_comes_from_the_header_line() {
+        assert_eq!(family("# knot: a torus knot\nx = u\n"), "knot");
+        assert_eq!(family("x = u\n"), "");
+    }
+
+    #[test]
+    fn one_family_cannot_fill_the_archive() {
+        let mut a = Archive::new();
+        for k in 0..BINS * BINS {
+            a.offer(in_family("knot", &k.to_string(), 1.0), &feat_for(k));
+        }
+        assert_eq!(a.len(), MAX_FAMILY_CELLS);
+    }
+
+    #[test]
+    fn the_last_form_of_a_family_is_not_replaced_by_another_family() {
+        let mut a = Archive::new();
+        let f = feat_for(0);
+        assert!(a.offer(in_family("silk", "s", 1.0), &f));
+        assert!(!a.offer(in_family("knot", "k", 9.0), &f));
+        assert!(a.offer(in_family("silk", "s2", 2.0), &f));
+    }
+
+    #[test]
+    fn gallery_limits_each_family_to_its_share() {
+        let mut a = Archive::new();
+        for k in 0..12 {
+            a.cells[k] = Some(in_family("knot", &format!("k{k}"), 9.0 - k as f32 * 0.1));
+        }
+        a.cells[12] = Some(in_family("silk", "s", 1.0));
+        let picked = a.diverse(10, GALLERY_SPACING);
+        assert_eq!(picked.iter().filter(|e| family(&e.text) == "knot").count(), 2);
+        assert!(picked.iter().any(|e| e.id == "s"));
     }
 
     #[test]
