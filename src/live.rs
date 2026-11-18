@@ -190,7 +190,7 @@ impl App {
         }
         let mut canvas = Canvas { px: &mut self.buf, w, h };
         for (k, (line, color)) in lines.iter().enumerate() {
-            canvas.label(12, 10 + k as i32 * step, line, *color, scale);
+            canvas.label(12, 10 + k as i32 * step, line, *color, 12.0 * scale as f32);
         }
     }
 
@@ -204,17 +204,17 @@ impl App {
             let top = bottom - (lines.len() as i32 * 10 * scale + 24);
             canvas.dim(0, top - 8, right, bottom);
             for (k, line) in lines.iter().enumerate() {
-                canvas.label(16, top + k as i32 * 10 * scale, line, RED, scale);
+                canvas.label(16, top + k as i32 * 10 * scale, line, RED, 12.0 * scale as f32);
             }
         }
         if let Some((msg, _)) = self.toast.as_ref().filter(|(_, at)| at.elapsed().as_secs_f32() < 2.5) {
-            canvas.label(12, bottom - 14 * scale - 30, msg, AMBER, scale);
+            canvas.label(12, bottom - 14 * scale - 30, msg, AMBER, 12.0 * scale as f32);
         }
         if self.show_help {
             let top = bottom / 2 - 40;
             canvas.dim(0, top - 16, right, top + 4 * 12 * scale + 8);
             for (k, line) in HELP.iter().enumerate() {
-                canvas.label(40, top + k as i32 * 12 * scale, line, WHITE, scale);
+                canvas.label(40, top + k as i32 * 12 * scale, line, WHITE, 12.0 * scale as f32);
             }
         }
     }

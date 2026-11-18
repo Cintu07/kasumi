@@ -18,7 +18,7 @@ use crate::features::{dist, junk, Feat};
 use crate::mutate::mutate;
 use crate::render::{Engine, Format, Program, Target};
 use crate::rng::Rng;
-use crate::ui::Canvas;
+use crate::ui::{text_width, Canvas};
 
 const TILE: usize = 192;
 const N: usize = 4;
@@ -33,14 +33,18 @@ const MIN_LOOK: f32 = 2.0;
 /// parent, count as the same picture.
 const MIN_TILE_GAP: f32 = 0.3;
 
-const PANEL_BG: u32 = 0x101012;
-const INK: u32 = 0xD4D4D0;
-const MUTED: u32 = 0x7C7C7A;
-const RULE: u32 = 0x2C2C30;
-const ACCENT: u32 = 0x7FB2D9;
-const PX: i32 = GRID as i32 + 20;
-const PW: i32 = PANEL as i32 - 40;
-const ROW: i32 = 21;
+const PANEL_BG: u32 = 0x0B0C0E;
+const INK: u32 = 0xD6DAE0;
+const MUTED: u32 = 0x737A84;
+const POINT: u32 = 0x9AA3AF;
+const EDGE: u32 = 0x3A3F47;
+const RULE: u32 = 0x24282E;
+const FAINT: u32 = 0x15171B;
+const ACCENT: u32 = 0x8AB8E0;
+const PX: i32 = GRID as i32 + 24;
+const PW: i32 = PANEL as i32 - 48;
+const PLOT_TOP: i32 = 326;
+const PLOT_HEIGHT: i32 = 232;
 
 #[derive(Clone, Copy)]
 struct Button(i32, i32, i32, i32);
@@ -51,8 +55,8 @@ impl Button {
     }
 }
 
-const NEXT: Button = Button(PX, 612, PX + PW, 668);
-const FINISH: Button = Button(PX, 682, PX + PW, 738);
+const NEXT: Button = Button(PX, 648, PX + 140, 692);
+const FINISH: Button = Button(PX + 152, 648, PX + PW, 692);
 
 /// What has been logged so far.
 struct Dataset {
@@ -165,25 +169,80 @@ fn log_litter(e: &Engine, scratch: &mut Target, litter: &Litter, points: u64, lo
     Ok(())
 }
 
-fn centred(c: &mut Canvas, b: Button, y: i32, s: &str, color: u32, scale: i32) {
-    c.text(b.0 + (b.2 - b.0 - s.len() as i32 * 8 * scale) / 2, y, s, color, scale);
+fn centred(c: &mut Canvas, b: Button, y: i32, s: &str, color: u32, size: f32) {
+    c.text(b.0 + (b.2 - b.0 - text_width(s, size)) / 2, y, s, color, size);
 }
 
-fn heading(c: &mut Canvas, y: i32, title: &str) {
-    c.text(PX, y, title, MUTED, 1);
-    c.fill(PX, y + 12, PX + PW, y + 13, RULE);
+fn right(c: &mut Canvas, y: i32, s: &str, color: u32, size: f32) {
+    c.text(PX + PW - text_width(s, size), y, s, color, size);
 }
 
-/// A label on the left and its value lined up on the right.
-fn row(c: &mut Canvas, y: i32, key: &str, value: &str) {
-    c.text(PX, y, key, MUTED, 2);
-    c.text(PX + PW - value.len() as i32 * 16, y, value, INK, 2);
+fn rule(c: &mut Canvas, y: i32) {
+    c.fill(PX, y, PX + PW, y + 1, RULE);
+}
+
+/// A small label with its value underneath.
+fn stat(c: &mut Canvas, x: i32, y: i32, key: &str, value: &str) {
+    c.text(x, y, key, MUTED, 10.5);
+    c.strong(x, y + 15, value, INK, 19.0);
+}
+
+/// One measurement: its name, a hairline scale and the number.
+fn reading(c: &mut Canvas, y: i32, key: &str, value: Option<(f32, String)>) {
+    let (left, end) = (PX + 62, PX + PW - 58);
+    c.text(PX, y, key, MUTED, 11.5);
+    c.fill(left, y + 8, end, y + 9, RULE);
+    match value {
+        Some((share, number)) => {
+            let at = left + ((end - left) as f32 * share.clamp(0.0, 1.0)) as i32;
+            c.fill(left, y + 8, at, y + 9, ACCENT);
+            c.fill(at, y + 5, at + 1, y + 12, ACCENT);
+            right(c, y, &number, INK, 11.5);
+        }
+        None => right(c, y, "-", MUTED, 11.5),
+    }
+}
+
+/// Where a sample sits on the style axes the archive uses: lit on a log scale, and spread.
+fn feature_space(f: &Feat) -> (f32, f32) {
+    let (low, high) = (0.02f32.ln(), 0.6f32.ln());
+    (((f.lit.max(0.02).ln() - low) / (high - low)).clamp(0.0, 1.0), (f.spread / 0.7).clamp(0.0, 1.0))
+}
+
+fn draw_plot(c: &mut Canvas, p: &Panel) {
+    let (x0, y0, x1, y1) = (PX, PLOT_TOP, PX + PW, PLOT_TOP + PLOT_HEIGHT);
+    c.outline(x0, y0, x1, y1, RULE, 1);
+    for k in 1..4 {
+        let (x, y) = (x0 + (x1 - x0) * k / 4, y0 + (y1 - y0) * k / 4);
+        c.fill(x, y0 + 1, x + 1, y1 - 1, FAINT);
+        c.fill(x0 + 1, y, x1 - 1, y + 1, FAINT);
+    }
+    c.text(x0 + 6, y0 + 5, "spread", MUTED, 10.0);
+    let lit = "lit (log)";
+    c.text(x1 - text_width(lit, 10.0) - 6, y1 - 16, lit, MUTED, 10.0);
+    let Some(l) = p.litter else { return };
+    let spot = |f: &Feat| {
+        let (u, v) = feature_space(f);
+        (x0 as f32 + 8.0 + u * (PW as f32 - 16.0), y1 as f32 - 8.0 - v * (PLOT_HEIGHT as f32 - 16.0))
+    };
+    for (k, f) in l.features.iter().enumerate() {
+        let (x, y) = spot(f);
+        match (k == 0, l.liked[k]) {
+            (true, _) => c.dot(x, y, 4.5, MUTED, true),
+            (_, true) => c.dot(x, y, 3.5, ACCENT, false),
+            _ => c.dot(x, y, 2.5, POINT, false),
+        }
+    }
+    if let Some(k) = p.hover {
+        let (x, y) = spot(&l.features[k]);
+        c.dot(x, y, 7.0, INK, true);
+    }
 }
 
 fn button(c: &mut Canvas, b: Button, label: &str, enabled: bool, hovered: bool) {
-    let line = if !enabled { RULE } else if hovered { ACCENT } else { MUTED };
+    let line = if !enabled { RULE } else if hovered { ACCENT } else { EDGE };
     c.outline(b.0, b.1, b.2, b.3, line, 1);
-    centred(c, b, b.1 + 20, label, if enabled { INK } else { MUTED }, 2);
+    centred(c, b, b.1 + 13, label, if enabled { INK } else { MUTED }, 13.0);
 }
 
 struct Panel<'a> {
@@ -197,55 +256,79 @@ struct Panel<'a> {
 }
 
 fn draw_panel(c: &mut Canvas, p: &Panel) {
+    for k in 1..N as i32 {
+        c.fill(k * TILE as i32, 0, k * TILE as i32 + 1, GRID as i32, FAINT);
+        c.fill(0, k * TILE as i32, GRID as i32, k * TILE as i32 + 1, FAINT);
+    }
     c.fill(GRID as i32, 0, WIDTH as i32, HEIGHT as i32, PANEL_BG);
     c.fill(GRID as i32, 0, GRID as i32 + 1, HEIGHT as i32, RULE);
-    c.text(PX, 16, "JUDGEMENT", INK, 2);
-    let batch = format!("batch {:04}", p.batch);
-    c.text(PX + PW - batch.len() as i32 * 8, 20, &batch, MUTED, 1);
+    c.strong(PX, 20, "kasumi", INK, 14.0);
+    c.text(PX + text_width("kasumi ", 14.0), 20, "judgement", MUTED, 14.0);
+    right(c, 22, &format!("batch {:04}", p.batch), MUTED, 11.0);
+    rule(c, 46);
 
-    heading(c, 44, "DATASET");
     let rate = 100.0 * p.data.selected as f64 / p.data.samples.max(1) as f64;
-    row(c, 62, "samples", &p.data.samples.to_string());
-    row(c, 62 + ROW, "selected", &p.data.selected.to_string());
-    row(c, 62 + 2 * ROW, "rate", &format!("{rate:.1}%"));
+    stat(c, PX, 58, "samples", &p.data.samples.to_string());
+    stat(c, PX + 100, 58, "selected", &p.data.selected.to_string());
+    stat(c, PX + 200, 58, "rate", &format!("{rate:.1}%"));
 
-    heading(c, 134, "BATCH");
     let count = |f: fn(&Litter) -> usize| p.litter.map_or("-".to_string(), |l| f(l).to_string());
-    row(c, 152, "tested", &count(|l| l.tested));
-    row(c, 152 + ROW, "rejected", &count(|l| l.rejected));
-    row(c, 152 + 2 * ROW, "shown", &count(|l| l.tiles.len() - 1));
-    row(c, 152 + 3 * ROW, "selected", &count(Litter::selected));
+    stat(c, PX, 110, "tested", &count(|l| l.tested));
+    stat(c, PX + 75, 110, "rejected", &count(|l| l.rejected));
+    stat(c, PX + 150, 110, "shown", &count(|l| l.tiles.len() - 1));
+    stat(c, PX + 225, 110, "picked", &count(Litter::selected));
+    rule(c, 160);
 
     let sample = p.hover.zip(p.litter);
-    let title = p.hover.map_or("SAMPLE".to_string(), |k| if k == 0 { "SAMPLE REF".to_string() } else { format!("SAMPLE {k:02}") });
-    heading(c, 245, &title);
-    let readings = sample.map(|(k, l)| {
-        let f = &l.features[k];
-        let name = family(&l.tiles[k].program.text);
-        [l.tiles[k].program.id.clone(), name.to_string(), format!("{:.3}", f.lit), format!("{:.3}", f.spread), format!("{:.4}", f.motion), format!("{:.3}", f.aspect), format!("{:.3}", f.chroma)]
-    });
-    for (n, key) in ["id", "family", "lit", "spread", "motion", "aspect", "chroma"].iter().enumerate() {
-        row(c, 263 + n as i32 * ROW, key, readings.as_ref().map_or("-", |r| r[n].as_str()));
+    let title = match p.hover {
+        Some(0) => "reference".to_string(),
+        Some(k) => format!("sample {k:02}"),
+        None => "no sample under cursor".to_string(),
+    };
+    c.strong(PX, 171, &title, if p.hover.is_some() { INK } else { MUTED }, 12.0);
+    if let Some((k, l)) = sample {
+        let program = &l.tiles[k].program;
+        right(c, 172, &format!("{}  {}", family(&program.text), program.id), MUTED, 10.5);
     }
+    let f = sample.map(|(k, l)| &l.features[k]);
+    let measure = |get: fn(&Feat) -> f32, full: f32, digits: usize| f.map(|f| (get(f) / full, format!("{:.*}", digits, get(f))));
+    reading(c, 194, "lit", measure(|f| f.lit, 0.6, 3));
+    reading(c, 213, "spread", measure(|f| f.spread, 0.7, 3));
+    reading(c, 232, "motion", measure(|f| f.motion, 0.05, 4));
+    reading(c, 251, "aspect", measure(|f| f.aspect, 1.0, 3));
+    reading(c, 270, "chroma", measure(|f| f.chroma, 1.0, 3));
+    rule(c, 296);
 
-    heading(c, 420, "CONTROLS");
-    for (n, (key, action)) in [("l click", "select"), ("r click", "breed"), ("space", "next batch"), ("s", "save picks")].iter().enumerate() {
-        row(c, 438 + n as i32 * ROW, key, action);
-    }
-    c.text(PX, 536, p.status, ACCENT, 1);
+    c.text(PX, 307, "feature space", MUTED, 11.0);
+    draw_plot(c, p);
+
+    c.text(PX, 572, "click select   right click breed", MUTED, 11.0);
+    c.text(PX, 590, "space next     s save picked", MUTED, 11.0);
+    c.text(PX, 618, p.status, ACCENT, 11.0);
 
     let ready = p.litter.is_some_and(Litter::ready);
-    button(c, NEXT, if p.litter.is_none() { "COMPUTING" } else { "NEXT BATCH" }, ready, p.over_next);
-    button(c, FINISH, "SAVE AND QUIT", true, p.over_finish);
+    button(c, NEXT, if p.litter.is_none() { "computing" } else { "next batch" }, ready, p.over_next);
+    button(c, FINISH, "save and quit", true, p.over_finish);
 }
 
 fn show_computing(window: &mut Window, buf: &mut [u32], data: &Dataset, batch: usize) -> Result<()> {
     let mut c = Canvas { px: buf, w: WIDTH, h: HEIGHT };
     c.fill(0, 0, GRID as i32, HEIGHT as i32, 0);
-    centred(&mut c, Button(0, 0, GRID as i32, HEIGHT as i32), HEIGHT as i32 / 2 - 8, "computing batch", MUTED, 2);
+    centred(&mut c, Button(0, 0, GRID as i32, HEIGHT as i32), HEIGHT as i32 / 2 - 8, "computing batch", MUTED, 14.0);
     draw_panel(&mut c, &Panel { data, batch, litter: None, hover: None, over_next: false, over_finish: false, status: "" });
     window.update_with_buffer(buf, WIDTH, HEIGHT)?;
     Ok(())
+}
+
+/// Corner brackets, the way a measured region is marked on a plot.
+fn brackets(c: &mut Canvas, x0: i32, y0: i32, x1: i32, y1: i32, color: u32) {
+    const ARM: i32 = 16;
+    for (x, dx) in [(x0 + 5, 1), (x1 - 6, -1)] {
+        for (y, dy) in [(y0 + 5, 1), (y1 - 6, -1)] {
+            c.fill(x.min(x + dx * ARM), y, x.max(x + dx * ARM) + 1, y + 1, color);
+            c.fill(x, y.min(y + dy * ARM), x + 1, y.max(y + dy * ARM) + 1, color);
+        }
+    }
 }
 
 fn draw_tile(c: &mut Canvas, k: usize, px: &[u32], selected: bool, hovered: bool) {
@@ -257,12 +340,12 @@ fn draw_tile(c: &mut Canvas, k: usize, px: &[u32], selected: bool, hovered: bool
     if k == 0 {
         c.dim(x0, y0, x1, y1);
     }
-    c.label(x0 + 6, y0 + 6, &if k == 0 { "REF".to_string() } else { format!("{k:02}") }, MUTED, 1);
+    let name = if k == 0 { "ref".to_string() } else { format!("{k:02}") };
+    c.label(x0 + 10, y0 + 9, &name, if selected { ACCENT } else { MUTED }, 11.0);
     if selected {
-        c.outline(x0, y0, x1, y1, ACCENT, 2);
-        c.fill(x1 - 14, y0 + 6, x1 - 6, y0 + 14, ACCENT);
+        brackets(c, x0, y0, x1, y1, ACCENT);
     } else if hovered {
-        c.outline(x0, y0, x1, y1, MUTED, 1);
+        brackets(c, x0, y0, x1, y1, MUTED);
     }
 }
 
