@@ -1,0 +1,390 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kasumi gallery</title><meta name="description" content="24 forms drawn by kasumi. each one is a few lines of math drawn with tens of millions of points."><meta property="og:title" content="kasumi gallery"><meta property="og:description" content="24 forms, each a few lines of math drawn with tens of millions of points."><meta property="og:type" content="website"><meta property="og:url" content="https://cintu07.github.io/kasumi/"><meta property="og:image" content="https://cintu07.github.io/kasumi/share.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://cintu07.github.io/kasumi/share.jpg"><style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#050505;color:#d9d5cd;font:14px/1.5 ui-monospace,Consolas,Menlo,monospace}
+header{max-width:1500px;margin:auto;padding:40px 20px 12px}h1{margin:0;font-size:20px;font-weight:400;letter-spacing:.3em}header p{margin:6px 0 0;color:#807b72}
+main{max-width:1500px;margin:auto;padding:16px 20px 60px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
+figure{margin:0;background:#000}video{display:block;width:100%;aspect-ratio:1;background:#000}figcaption{display:flex;gap:16px;align-items:baseline;padding:8px 2px;color:#807b72}figcaption a{color:inherit}
+details{flex:1;min-width:0}summary{cursor:pointer}pre{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#d9d5cd}
+</style></head><body><header><h1>KASUMI</h1><p>24 forms. each one is a few lines of math drawn with tens of millions of points. <a href="https://github.com/Cintu07/kasumi" style="color:inherit">source</a></p></header><main>
+<figure><video src="01.mp4" poster="01.jpg" muted loop playsinline preload="none"></video><figcaption><a href="01.jpg">01</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette ember
+@zoom 0.4
+@gamma 2.6
+let a = -1.7 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let c = -1.312
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = sin(a * py) + c * cos(a * px)
+y = sin(e * px) + d * cos(e * py)
+h = smoothstep(0, 1.6, mag(x + -0.2306 * sin(1.084 * c + -0.5222 * t) - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="02.mp4" poster="02.jpg" muted loop playsinline preload="none"></video><figcaption><a href="02.jpg">02</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette mono
+@zoom 0.4
+@gamma 2.6
+let a = -1.96 + 0.115 * sin(t * 0.1722)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let c = -0.8812
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = cos(a * py) + c * sin(a * px)
+y = sin(e * px) + d * sin(e * py)
+h = smoothstep(0, 1.468, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="03.mp4" poster="03.jpg" muted loop playsinline preload="none"></video><figcaption><a href="03.jpg">03</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette ink
+@zoom 0.4
+@gamma 2.6
+let a = -1.96 + 0.12 * sin(t * 0.1722)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let c = -0.8812 + 0.1015 * cos(6.07 * r1 + -0.3094 * t)
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = cos(a * py + -0.1509 * cos(4.118 * d + 0.3603 * t)) + c * sin(a * px)
+y = sin(e * px) + d * cos(e * py)
+h = smoothstep(0, 1.6, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="04.mp4" poster="04.jpg" muted loop playsinline preload="none"></video><figcaption><a href="04.jpg">04</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette sakura
+@zoom 0.4
+@gamma 2.6
+let a = -1.7 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let c = -0.8812
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = cos(a * py) + c * sin(a * px)
+y = sin(e * px) + d * cos(e * py)
+h = smoothstep(0, 1.6, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="05.mp4" poster="05.jpg" muted loop playsinline preload="none"></video><figcaption><a href="05.jpg">05</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette dusk
+@zoom 0.4
+@gamma 2.6
+let a = -1.304 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.08529 * cos(t * 0.17)
+let c = -0.9
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = sin(a * py) + c * cos(a * px)
+y = sin(e * px) + d * sin(e * py)
+h = smoothstep(0, 1.6, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="06.mp4" poster="06.jpg" muted loop playsinline preload="none"></video><figcaption><a href="06.jpg">06</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette moss
+@zoom 0.4
+@gamma 2.6
+let a = -2.116 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let d = -1.2 + 0.06047 * sin(t * 0.13)
+x = sin(a * py) + -0.03025 * sin(3.307 * r1 + 0.2121 * t)
+y = sin(e * px) + d * cos(e * py)
+h = smoothstep(0, 1.6, atan2(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="07.mp4" poster="07.jpg" muted loop playsinline preload="none"></video><figcaption><a href="07.jpg">07</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette ember
+@zoom 0.4
+@gamma 2.6
+let a = -2.116 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.1 * cos(t * 0.17)
+let d = -1.2 + 0.06047 * sin(t * 0.13)
+x = sin(a * py) + -0.03025 * sin(3.307 * r1 + 0.2121 * t)
+y = sin(e * px) + d * cos(e * py)
+h = smoothstep(0, 1.6, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="08.mp4" poster="08.jpg" muted loop playsinline preload="none"></video><figcaption><a href="08.jpg">08</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette sakura
+@zoom 0.4
+@gamma 2.6
+let a = -0.9842 + 0.12 * sin(t * 0.2207)
+let e = u * fract(u * 1500) + 0.09329 * cos(t * 0.17)
+let c = -1.588
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = sin(a * py) + c * cos(a * px)
+y = sin(e * px) + d * sin(e * py)
+h = smoothstep(0, 1.6, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="09.mp4" poster="09.jpg" muted loop playsinline preload="none"></video><figcaption><a href="09.jpg">09</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
+# gpu thread walks its own chaotic orbit; the params drift slowly with time
+@points 40m
+@iters 200
+@palette jade
+@zoom 0.4
+@gamma 2.6
+let a = -1.7 + 0.12 * sin(t * 0.21)
+let e = 1.8 + 0.1247 * cos(t * 0.17)
+let c = -1.128
+let d = -1.2 + 0.08 * sin(t * 0.13)
+x = sin(a * py) + c * cos(a * px)
+y = d * cos(e * py)
+h = smoothstep(0, 1.254, mag(x - px, y - py))
+</pre></details></figcaption></figure>
+<figure><video src="10.mp4" poster="10.jpg" muted loop playsinline preload="none"></video><figcaption><a href="10.jpg">10</a><details><summary>formula</summary><pre># knot: a torus knot made of rings, with depth of field from z
+@points 30m
+@palette ink
+@dof 0.06
+@focus 0
+param p = 2.924
+param q = 7
+let s = floor(u * 1500) / 1500
+let v = fract(u * 1500) * tau
+let a = s * tau + t * 0.05
+let rr = 0.55 + 0.1308 * cos(4.639 * a + -0.1518 * t) + 0.22 * cos(q * a)
+let cx = rr * sin(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.22 * sin(q * a)
+let ring = 0.05 + 0.02 * (t * 0.05)
+let x3 = cx + ring * (cos(v) + 0.2665 * sin(3.55 * ring + -0.5359 * t)) * cos(p * a)
+let y3 = cy + ring * cos(v) * sin(p * a)
+let z3 = cz + ring * sin(v)
+let ang = u * 1500
+x = x3 * cos(ang) - z3 * sin(ang)
+y = y3 * 0.9 + z3 * (0.25 + -0.1439 * cos(3.042 * ang + 0.3242 * t))
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="11.mp4" poster="11.jpg" muted loop playsinline preload="none"></video><figcaption><a href="11.jpg">11</a><details><summary>formula</summary><pre># knot: a torus knot made of rings, with depth of field from z
+@points 30m
+@palette ember
+@dof 0.06
+@focus 0
+param p = 2.094
+param q = 7.41
+let s = floor(u * 1500) / 1500 + 0.2431 * sin(5.345 * r1 + 0.3987 * t)
+let v = fract(t * 0.3773 * 1500) * tau
+let a = s * tau + t * 0.05929
+let rr = 0.4641 + 0.22 * cos(q * (a + -0.215 * cos(5.34 * v + 0.4016 * t)))
+let cx = rr * cos(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.174 * sin(q * a * (1 + -0.03724 * cos(2.766 * u + 0.7518 * t)))
+let ring = 0.05 + 0.02 * (t * 0.05)
+let x3 = cx + -0.2485 * cos(4.221 * p) + ring * (sin(v) + 0.2665 * sin(3.55 * ring + -0.5359 * t)) * sin(p * a)
+let y3 = cy + ring * cos(v) * cos(p * a)
+let z3 = cz + ring * sin(v)
+let ang = u * 1500
+x = x3 * cos(ang) - z3 * (sin(ang) + -0.2388 * sin(4.413 * s + 0.09992 * t))
+y = y3 * 0.9 + z3 * (0.25 + -0.1439 * cos(3.042 * ang + 0.3242 * t))
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="12.mp4" poster="12.jpg" muted loop playsinline preload="none"></video><figcaption><a href="12.jpg">12</a><details><summary>formula</summary><pre># knot: a torus knot made of rings, with depth of field from z
+@points 30m
+@palette jade
+@dof 0.06
+@focus 0
+param p = 3.624
+param q = 7
+let s = floor(u * 1500) / 1500
+let v = fract(u * 1500) * tau
+let a = s * tau + t * 0.05
+let rr = 0.55 + 0.22 * cos(q * a)
+let cx = rr * cos(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.22 * sin(q * a)
+let ring = 0.05 + 0.02 * (t * 0.05)
+let x3 = cx + ring * (cos(v) + 0.2665 * sin(3.55 * ring + -0.5359 * t)) * cos(p * a)
+let y3 = cy + ring * cos(v) * sin(p * a)
+let z3 = cz + ring * sin(v)
+let ang = u * 1500
+x = x3 * cos(ang) - z3 * sin(ang)
+y = y3 * 0.9 + z3 * (0.25 + -0.1439 * cos(3.042 * ang + 0.3242 * t))
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="13.mp4" poster="13.jpg" muted loop playsinline preload="none"></video><figcaption><a href="13.jpg">13</a><details><summary>formula</summary><pre># knot: a torus knot made of rings, with depth of field from z
+@points 30m
+@palette ice
+@dof 0.06
+@focus 0
+param p = 3
+param q = 7
+let s = floor(u * 1500) / 1500
+let v = fract(u * 1500) * tau
+let a = s * tau + t * 0.05
+let rr = 0.55 + 0.22 * cos(q * a)
+let cx = rr * cos(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.22 * sin(q * a)
+let ring = 0.05 + 0.02 * sin(a * 3 + t)
+let x3 = cx + ring * cos(v) * cos(p * a)
+let y3 = cy + ring * cos(v) * sin(p * a)
+let z3 = cz + ring * sin(v)
+let ang = t * 0.15
+x = x3 * cos(ang) - z3 * sin(ang)
+y = y3 * 0.9 + z3 * 0.25
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="14.mp4" poster="14.jpg" muted loop playsinline preload="none"></video><figcaption><a href="14.jpg">14</a><details><summary>formula</summary><pre># knot: a torus knot made of rings, with depth of field from z
+@points 30m
+@palette sakura
+@dof 0.06
+@focus 0
+param p = 2.428
+param q = 7.41
+let s = floor(u * 1500) / 1500 + 0.2431 * sin(5.345 * r1 + 0.3987 * t)
+let v = fract(t * 0.3773 * 1500) * tau
+let a = s * tau + t * 0.05929
+let rr = 0.4641 + 0.22 * cos(q * (a + -0.215 * cos(5.34 * v + 0.4016 * t)))
+let cx = rr * sin(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.174 * sin(q * a)
+let ring = 0.05 + 0.02 * (t * 0.05)
+let x3 = cx + -0.2485 * cos(4.221 * p) + ring * (sin(v) + 0.2665 * sin(3.55 * ring + -0.5359 * t)) * sin(p * a)
+let y3 = cy + ring * cos(v) * sin(p * a)
+let z3 = cz + ring * sin(v)
+let ang = u * 1500
+x = x3 * cos(ang) - z3 * (sin(ang) + -0.2388 * sin(4.413 * s + 0.09992 * t))
+y = y3 * 0.9 + z3 * (0.25 + -0.1439 * cos(3.042 * ang + 0.3242 * t))
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="15.mp4" poster="15.jpg" muted loop playsinline preload="none"></video><figcaption><a href="15.jpg">15</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette jade
+param k = 1.556
+let s = floor(k / (r1 * 3.6)) / 300
+let v = fract(u * 300) * tau
+let r = cos(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(s * tau * 3 + t * 0.3))
+x = r * cos(t * (0.17 + 0.1389 * sin(6.465 * s + -0.3544 * t)))
+y = r * (cos(v + s * 0.35) * (1 + -0.1668 * cos(4.806 * k + 0.6453 * t)))
+h = k / ((r1 + 0.1009 * sin(39.28 * u + 0.5541 * t)) * 3.6)
+</pre></details></figcaption></figure>
+<figure><video src="16.mp4" poster="16.jpg" muted loop playsinline preload="none"></video><figcaption><a href="16.jpg">16</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette sakura
+param k = 2.711
+let s = floor(u * 300) / 300
+let v = sqrt(u * 300) * tau
+let r = sin(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(s * tau * 3 + t * 0.3))
+x = r * cos(v + s * 0.35)
+y = r * sin(v + s * 0.426)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="17.mp4" poster="17.jpg" muted loop playsinline preload="none"></video><figcaption><a href="17.jpg">17</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette sakura
+param k = 2.765
+let s = abs(u * 300) / 300
+let v = fract(u * 300) * tau
+let r = sin(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(t * 0.3))
+x = (r + -0.2005 * sin(6.767 * r + -0.6185 * t)) * cos(v)
+y = r * (t * 0.5)
+h = floor(u * 300) / (206.2 * (1 + -0.2133 * sin(5.133 * x + 0.1827 * t)))
+</pre></details></figcaption></figure>
+<figure><video src="18.mp4" poster="18.jpg" muted loop playsinline preload="none"></video><figcaption><a href="18.jpg">18</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette dusk
+param k = 1.71
+let s = floor(k / (r1 * 3.6)) / 300
+let v = fract(u * 300) * tau * (1 + -0.1455 * sin(7.21 * r1 + 0.4584 * t))
+let r = sin(k * v + s * 0.9 + 0.07131 * sin(5.191 * r1 + 0.1466 * t) + t * 0.2) * (0.8 + 0.2 * cos(s * tau * 3 + t * 0.3))
+x = r * cos(t * (0.1389 * sin(6.465 * s + -0.3544 * t)))
+y = r * cos(v + s * 0.35)
+h = k / ((r1 + 0.1009 * sin(38.78 * u + 0.5541 * t)) * 3.6)
+</pre></details></figcaption></figure>
+<figure><video src="19.mp4" poster="19.jpg" muted loop playsinline preload="none"></video><figcaption><a href="19.jpg">19</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette dusk
+param k = 2.377
+let s = floor(u * 300) / 300
+let v = fract(u * 300) * tau
+let r = sin(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(s * tau * 3 + t * 0.3))
+x = r * cos(1.8 + 0.1 * cos(t * 0.17) + s * 0.35)
+y = r * sin(v + 0.125 * cos(29.71 * u + -0.5636 * t) + s * 0.3595)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="20.mp4" poster="20.jpg" muted loop playsinline preload="none"></video><figcaption><a href="20.jpg">20</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette moss
+param k = 4.948
+let s = -0.1919 * sin(3.491 * k * (1 + -0.135 * sin(6.213 * r2 + 0.6366 * t)) + -0.7831 * t)
+let v = fract(u * 300) * tau
+let r = sin(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(s * tau * 3 + t * 0.3))
+x = r * cos(v + s * 0.35)
+y = r * sin(fract(u * 1500) * tau + s * 0.35)
+h = s + 0.2466 * cos(7.815 * r + -0.3973 * t)
+</pre></details></figcaption></figure>
+<figure><video src="21.mp4" poster="21.jpg" muted loop playsinline preload="none"></video><figcaption><a href="21.jpg">21</a><details><summary>formula</summary><pre># rose: three hundred petal strands that all cross the centre, so millions
+# of points pile onto the same few pixels. the worst case for naive atomics
+@points 40m
+@palette ink
+param k = 3.031
+let s = floor(u * 300) / 300
+let v = fract(u * 300) * tau
+let r = sin(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.2 * cos(t * 0.3))
+x = r * cos(v + s * 0.35)
+y = r * sin(v)
+h = s
+</pre></details></figcaption></figure>
+<figure><video src="22.mp4" poster="22.jpg" muted loop playsinline preload="none"></video><figcaption><a href="22.jpg">22</a><details><summary>formula</summary><pre># silk: four hundred strands, each a slow wave, braided by time
+@points 20m
+@palette sakura
+@zoom 1.35
+param strands = 400
+param k = 3
+let s = floor(u * strands) / strands
+let v = sqrt(u * strands) * tau
+let r = 0.5
+x = r * cos(v + (0.05 + 0.02 * (t * 0.05)) + 0.15 * sin(t * 0.2)) * 1.25
+y = r * sin(v * 2 + s * 3) * 0.6 + 0.08 * (sin(t) + (3.491 * k + -0.7831 * t) * sin(1.795 * s + -0.2162 * t))
+h = abs(u * 3.25)
+</pre></details></figcaption></figure>
+<figure><video src="23.mp4" poster="23.jpg" muted loop playsinline preload="none"></video><figcaption><a href="23.jpg">23</a><details><summary>formula</summary><pre># tiny: the original tiny-code style. ten thousand dots in a browser,
+# ten million here. i is the integer index, % folds it into rows
+@points 10m
+@palette ice
+@gamma 2.4
+let k = i % 894.7
+let e = fract(i / (t * 0.3773))
+let q = k / 997 * tau
+let d = atan2(cos(e * 0.002), sin(q * 2 - (t + -0.2793 * sin(6.717 * r1 + -0.2397 * t)) * 0.2837)) * 0.4564
+let a = q + d * sin(e * 0.0005 + t * (floor(u * 300) / 300)) * 2
+x = sin(a) * d * (1 + 0.3 * sin(e * 0.00031))
+y = sin(a * 2.32) * d * 0.7 + sin(e * 0.00017 - t * 0.5) * 0.15
+h = fract(u * 1.683)
+</pre></details></figcaption></figure>
+<figure><video src="24.mp4" poster="24.jpg" muted loop playsinline preload="none"></video><figcaption><a href="24.jpg">24</a><details><summary>formula</summary><pre># tiny: the tiny-code sketch style. in a browser this is a few thousand dots
+# placed by the integer index; here every dot is a smear of a thousand.
+# i % 240 walks along a row, floor(i / 240) picks the row
+@points 12m
+@palette mono
+@gamma 2.4
+@zoom 1.1
+let k = i % 240
+let row = floor(i / 240) % 64
+let e = r1 * 0.02
+let q = k / 240 * tau
+let ring = row / 64
+let d = 0.25 + 0.55 * ring + 0.06 * sin(q * 5 + ring * 9 - t * 0.6)
+let a = q + ring * 1.7 + 0.25 * sin(ring * tau * 2 + t * 0.3) + e
+x = cos(a) * d * (1 + 0.2 * cos(q * 3 + t * 0.4))
+y = sin(a) * d * 0.85
+b = 0.4 + ring
+</pre></details></figcaption></figure>
+</main><script>const o=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?e.target.play().catch(()=>{}):e.target.pause()),{rootMargin:"200px"});document.querySelectorAll("video").forEach(v=>o.observe(v))</script></body></html>
