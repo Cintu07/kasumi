@@ -103,6 +103,6 @@ rtx 5060 laptop, 26 sms, 100m points per frame, median of 5 frames. values are b
 
 tile binning loses on smooth forms and wins when points scatter across a buffer bigger than the l2 cache. `live` and `render` time all three kernels on each form and use the fastest.
 
-the taste model has not been measured on real clicks yet, and no full overnight run has been judged.
+on 540 judgements from one person (56 likes), the clip taste model ranks a held-out like above a skip 77.8% of the time over 5 random splits, and 73% of the time when whole screens are held out. no full overnight run has been judged.
 
 kasumi is released under the mit license, see [LICENSE](LICENSE) for the text.
