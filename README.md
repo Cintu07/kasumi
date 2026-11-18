@@ -58,7 +58,9 @@ inputs are `i` (point index), `n` (point count), `t` (seconds), `u` (`i / n`), `
 
 math is `+ - * / % ^` and sin cos tan tanh atan2 sqrt abs fract floor sign min max mix clamp smoothstep mag exp log pow noise rnd.
 
-settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@bloom`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
+settings are `@points`, `@palette`, `@zoom`, `@cx`, `@cy`, `@gamma`, `@vibrancy`, `@heat`, `@exposure`, `@trail`, `@dof`, `@focus`, `@shutter`, `@bloom`, `@de`, `@iters`, `@warmup` and `@fastmath`. palettes are mono, ember, ice, sakura, moss, ink, dusk and jade.
+
+`@de 12` turns on adaptive density estimation, which blurs sparse pixels by up to 12 pixels and leaves dense ones sharp. it removes grain at low point counts and softens single threads, so it is off by default.
 
 a form that reads `px` or `py` runs as an iterated system, and each gpu thread walks its own orbit. `forms/clifford.ks` works this way.
 
@@ -70,7 +72,7 @@ a form that reads `px` or `py` runs as an iterated system, and each gpu thread w
 
 `kasumi-gpu` loads the cuda driver and nvrtc at run time. reload goes through ptx and the driver jit, which measured 2 to 3 times faster here than the cubin path inside nvrtc.
 
-`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings.
+`kasumi-explore` mutates the syntax tree, throws out blank, blown out, frozen, noisy, flat and cropped forms, and keeps the best form per style cell in a map-elites archive. `taste/siglip.py` is an optional taste model on siglip or clip embeddings, and `kasumi evolve --novelty-on embed` uses the same embeddings to measure novelty.
 
 ## numbers
 
