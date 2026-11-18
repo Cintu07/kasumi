@@ -1,0 +1,21 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            target
+          key: cargo-${{ hashFiles('Cargo.lock') }}
+      # the gpu crates load cuda at run time, so everything builds on a machine with no gpu
+      - run: cargo build --release --locked
+      - run: cargo test --release --locked -p kasumi-lang -p kasumi-explore
