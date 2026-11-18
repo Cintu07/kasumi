@@ -1,12 +1,12 @@
 /target
 /.cuda
+/.venv
 /shots
 /renders
 /runs
 /explore
+/showcase
+/reference-videos
 *.ptx
-/.venv
-/docs/*.cu
 forms/*.cu
-/showcase/*.mp4
-/showcase/*.png
+/runs-gallery.log
