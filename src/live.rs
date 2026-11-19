@@ -163,7 +163,7 @@ impl App {
     fn draw_hud(&mut self, c: &Loaded, look: &Look, trail: f32) {
         let (w, h) = (self.target.w as usize, self.target.h as usize);
         let scale = if h >= 1000 { 2 } else { 1 };
-        let step = 10 * scale + 4;
+        let step = 16 * scale;
         let mode = if self.auto { format!("{} (auto)", self.mode.name()) } else { self.mode.name().to_string() };
         let s = &c.stats;
         let mut lines = vec![(
@@ -201,10 +201,11 @@ impl App {
         let mut canvas = Canvas { px: &mut self.buf, w, h };
         if let Some(err) = &self.error {
             let lines: Vec<&str> = err.lines().take(8).collect();
-            let top = bottom - (lines.len() as i32 * 10 * scale + 24);
-            canvas.dim(0, top - 8, right, bottom);
+            let step = 16 * scale;
+            let top = bottom - (lines.len() as i32 * step + 12 * scale);
+            canvas.dim(0, top - 8 * scale, right, bottom);
             for (k, line) in lines.iter().enumerate() {
-                canvas.label(16, top + k as i32 * 10 * scale, line, RED, 12.0 * scale as f32);
+                canvas.label(16, top + k as i32 * step, line, RED, 12.0 * scale as f32);
             }
         }
         if let Some((msg, _)) = self.toast.as_ref().filter(|(_, at)| at.elapsed().as_secs_f32() < 2.5) {
@@ -212,9 +213,9 @@ impl App {
         }
         if self.show_help {
             let top = bottom / 2 - 40;
-            canvas.dim(0, top - 16, right, top + 4 * 12 * scale + 8);
+            canvas.dim(0, top - 16, right, top + 4 * 16 * scale + 8);
             for (k, line) in HELP.iter().enumerate() {
-                canvas.label(40, top + k as i32 * 12 * scale, line, WHITE, 12.0 * scale as f32);
+                canvas.label(40, top + k as i32 * 16 * scale, line, WHITE, 12.0 * scale as f32);
             }
         }
     }
