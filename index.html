@@ -1,10 +1,10 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kasumi gallery</title><meta name="description" content="24 forms drawn by kasumi. each one is a few lines of math drawn with tens of millions of points."><meta property="og:title" content="kasumi gallery"><meta property="og:description" content="24 forms, each a few lines of math drawn with tens of millions of points."><meta property="og:type" content="website"><meta property="og:url" content="https://cintu07.github.io/kasumi/"><meta property="og:image" content="https://cintu07.github.io/kasumi/card.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="glowing point forms on black, with the name kasumi"><meta name="twitter:title" content="kasumi gallery"><meta name="twitter:description" content="24 forms, each a few lines of math drawn with tens of millions of points."><link rel="icon" type="image/png" href="icon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://cintu07.github.io/kasumi/card.jpg"><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>kasumi gallery</title><meta name="description" content="34 forms drawn by kasumi. each one is a few lines of math drawn with tens of millions of points."><meta property="og:title" content="kasumi gallery"><meta property="og:description" content="34 forms, each a few lines of math drawn with tens of millions of points."><meta property="og:type" content="website"><meta property="og:url" content="https://cintu07.github.io/kasumi/"><meta property="og:image" content="https://cintu07.github.io/kasumi/card.jpg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="glowing point forms on black, with the name kasumi"><meta name="twitter:title" content="kasumi gallery"><meta name="twitter:description" content="34 forms, each a few lines of math drawn with tens of millions of points."><link rel="icon" type="image/png" href="icon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://cintu07.github.io/kasumi/card.jpg"><style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#050505;color:#d9d5cd;font:14px/1.5 ui-monospace,Consolas,Menlo,monospace}
 header{max-width:1500px;margin:auto;padding:40px 20px 12px}h1{margin:0;font-size:20px;font-weight:400;letter-spacing:.3em}header p{margin:6px 0 0;color:#807b72}
 main{max-width:1500px;margin:auto;padding:16px 20px 60px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr))}
 figure{margin:0;background:#000}video{display:block;width:100%;aspect-ratio:1;background:#000}figcaption{display:flex;gap:16px;align-items:baseline;padding:8px 2px;color:#807b72}figcaption a{color:inherit}.dl{display:flex;gap:12px;white-space:nowrap}
 details{flex:1;min-width:0}summary{cursor:pointer}pre{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;color:#d9d5cd}
-</style></head><body><header><h1>KASUMI</h1><p>24 forms. each one is a few lines of math drawn with tens of millions of points. every form downloads as a desktop wallpaper (3840x2160), a phone wallpaper (1440x3200) and a 10 second 4k loop. <a href="https://github.com/Cintu07/kasumi" style="color:inherit">source</a></p></header><main>
+</style></head><body><header><h1>KASUMI</h1><p>34 forms. each one is a few lines of math drawn with tens of millions of points. every form downloads as a desktop wallpaper (3840x2160), a phone wallpaper (1440x3200) and a 10 second 4k loop. <a href="https://github.com/Cintu07/kasumi" style="color:inherit">source</a></p></header><main>
 <figure><video src="01.mp4" poster="01.jpg" muted loop playsinline preload="none"></video><figcaption><a href="01.jpg">01</a><details><summary>formula</summary><pre># clifford: a strange attractor. px / py are the previous point, so every
 # gpu thread walks its own chaotic orbit; the params drift slowly with time
 @points 40m
@@ -387,4 +387,150 @@ x = cos(a) * d * (1 + 0.2 * cos(q * 3 + t * 0.4))
 y = sin(a) * d * 0.85
 b = 0.4 + ring
 </pre></details><span class="dl"><a href="wall/kasumi-24-desktop.jpg" download>desktop</a><a href="wall/kasumi-24-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-24-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="25.mp4" poster="25.jpg" muted loop playsinline preload="none"></video><figcaption><a href="25.jpg">25</a><details><summary>formula</summary><pre># hopalong: barry martin's map, the square root makes the steps
+@points 40m
+@iters 400
+@palette dusk
+@zoom 0.03
+@cx 3.3
+@cy 3.3
+@gamma 2.2
+let a = 7.17
+let q = 8.44 + 0.3 * sin(t * 0.1)
+let c = 2.56
+x = py - sign(px) * sqrt(abs(q * px - c))
+y = a - px
+h = fract(mag(x, y) * 0.02)
+</pre></details><span class="dl"><a href="wall/kasumi-25-desktop.jpg" download>desktop</a><a href="wall/kasumi-25-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-25-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="26.mp4" poster="26.jpg" muted loop playsinline preload="none"></video><figcaption><a href="26.jpg">26</a><details><summary>formula</summary><pre># de jong: each point is the last one pushed through four sines
+@points 40m
+@iters 200
+@palette moss
+@zoom 0.42
+@gamma 2.4
+let a = 1.4 + 0.05 * sin(t * 0.13)
+let q = -2.3
+let c = 2.4
+let d = -2.1 + 0.05 * cos(t * 0.11)
+x = sin(a * py) - cos(q * px)
+y = sin(c * px) - cos(d * py)
+h = smoothstep(0, 2, mag(x - px, y - py))
+</pre></details><span class="dl"><a href="wall/kasumi-26-desktop.jpg" download>desktop</a><a href="wall/kasumi-26-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-26-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="27.mp4" poster="27.jpg" muted loop playsinline preload="none"></video><figcaption><a href="27.jpg">27</a><details><summary>formula</summary><pre># ikeda: a laser in a ring cavity, each step turns the point by an angle that depends on its distance
+@points 40m
+@iters 300
+@palette ice
+@zoom 0.4
+@cx 0.6
+@cy -0.45
+@gamma 2.3
+let k = 0.9 + 0.012 * sin(t * 0.15)
+let a = 0.4 - 6 / (1 + px * px + py * py)
+x = 1 + k * (px * cos(a) - py * sin(a))
+y = k * (px * sin(a) + py * cos(a))
+h = smoothstep(0, 1.5, mag(x - px, y - py))
+</pre></details><span class="dl"><a href="wall/kasumi-27-desktop.jpg" download>desktop</a><a href="wall/kasumi-27-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-27-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="28.mp4" poster="28.jpg" muted loop playsinline preload="none"></video><figcaption><a href="28.jpg">28</a><details><summary>formula</summary><pre># gumowski-mira: a map from particle physics that draws feathers
+@points 40m
+@iters 400
+@palette sakura
+@zoom 0.085
+@cx 1.5
+@cy -1.2
+@gamma 2.2
+let m = -0.48 + 0.01 * sin(t * 0.1)
+let fx = m * px + 2 * (1 - m) * px * px / (1 + px * px)
+x = 0.93 * py + fx
+let fn = m * x + 2 * (1 - m) * x * x / (1 + x * x)
+y = -px + fn
+h = fract(mag(x, y) * 0.05)
+</pre></details><span class="dl"><a href="wall/kasumi-28-desktop.jpg" download>desktop</a><a href="wall/kasumi-28-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-28-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="29.mp4" poster="29.jpg" muted loop playsinline preload="none"></video><figcaption><a href="29.jpg">29</a><details><summary>formula</summary><pre># svensson: two sines and two cosines feeding each other
+@points 40m
+@iters 200
+@palette jade
+@zoom 0.36
+@gamma 2.4
+let a = 1.5 + 0.02 * sin(t * 0.12)
+let c = 1.6
+let d = 0.9
+x = d * sin(a * px) - sin(-1.8 * py)
+y = c * cos(a * px) + cos(-1.8 * py)
+h = smoothstep(0, 2, mag(x - px, y - py))
+</pre></details><span class="dl"><a href="wall/kasumi-29-desktop.jpg" download>desktop</a><a href="wall/kasumi-29-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-29-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="30.mp4" poster="30.jpg" muted loop playsinline preload="none"></video><figcaption><a href="30.jpg">30</a><details><summary>formula</summary><pre># fractal dream: four sines with odd constants, from clifford pickover's book
+@points 40m
+@iters 200
+@palette ember
+@zoom 0.45
+@gamma 2.5
+let a = -0.966918 + 0.01 * sin(t * 0.13)
+let k = 2.879879
+let c = 0.765145
+let d = 0.744728
+x = sin(py * k) + c * sin(px * k)
+y = sin(px * a) + d * sin(py * a)
+h = smoothstep(0, 2, mag(x - px, y - py))
+</pre></details><span class="dl"><a href="wall/kasumi-30-desktop.jpg" download>desktop</a><a href="wall/kasumi-30-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-30-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="31.mp4" poster="31.jpg" muted loop playsinline preload="none"></video><figcaption><a href="31.jpg">31</a><details><summary>formula</summary><pre># aurora: two hundred curtains, each a slow wave with noise in it
+@points 30m
+@palette jade
+@zoom 0.9
+param curtains = 200
+let s = floor(u * curtains) / curtains
+let v = fract(u * curtains)
+x = (v * 2 - 1) * 1.15
+y = 0.3 * sin(v * 4 + s * 9 + t * 0.3) + (s - 0.5) * 0.5 + 0.18 * noise(v * 3, s * 4 + t * 0.15)
+b = smoothstep(0, 0.25, v) * smoothstep(1, 0.75, v)
+h = s
+</pre></details><span class="dl"><a href="wall/kasumi-31-desktop.jpg" download>desktop</a><a href="wall/kasumi-31-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-31-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="32.mp4" poster="32.jpg" muted loop playsinline preload="none"></video><figcaption><a href="32.jpg">32</a><details><summary>formula</summary><pre># bred from rose by kasumi evolve: hundreds of petals that all cross the middle
+@zoom 0.8
+@points 40m
+@palette jade
+param k = 7.477
+let s = floor(u * (300 + 0.2518 * cos(32.43 * u + 0.4301 * t))) / 300
+let v = fract(u * 300) * tau
+let r = cos(k * v + s * 0.9 + t * 0.2) * (0.8 + 0.1552 * cos(s * tau * 3.269 + t * 0.2152))
+x = (r + 0.1982 * cos(1.034 * t + 0.7348 * t)) * cos(v + s * 0.35)
+y = r * sin(v + 0.1635 * cos(6.441 * s + 0.1519 * t))
+h = s
+</pre></details><span class="dl"><a href="wall/kasumi-32-desktop.jpg" download>desktop</a><a href="wall/kasumi-32-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-32-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="33.mp4" poster="33.jpg" muted loop playsinline preload="none"></video><figcaption><a href="33.jpg">33</a><details><summary>formula</summary><pre># bred from silk by kasumi evolve: four hundred strands folded into a drape
+@points 20m
+@palette mono
+@zoom 1.1
+param strands = 400
+param k = 3
+let s = floor(u * strands) / strands
+let v = fract(u * strands) * tau
+let w = sin(v * k + s * 6 + t * 0.4)
+let r = 0.5 + 0.22 * w * cos(s * tau * 2 - t * 0.3)
+x = r * cos(v + 0.6 * s + 0.15 * sin(t * 0.2)) * 1.25
+y = r * sin(v * 2 + s * 3) * 0.6 + 0.08 * sin(s * tau * 3 + t)
+</pre></details><span class="dl"><a href="wall/kasumi-33-desktop.jpg" download>desktop</a><a href="wall/kasumi-33-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-33-4k.mp4">4k loop</a></span></figcaption></figure>
+<figure><video src="34.mp4" poster="34.jpg" muted loop playsinline preload="none"></video><figcaption><a href="34.jpg">34</a><details><summary>formula</summary><pre># bred from knot by kasumi evolve: rings tangled into a ribbon
+@points 30m
+@palette ice
+@dof 0.06
+@focus 0
+param p = 2.306
+param q = 6.709
+let s = floor(u * 1500) / 1500
+let v = abs(u * 1500) * tau
+let a = s * tau + t * 0.05
+let rr = 0.55 + -0.2892 * cos(1.576 * q + 0.6019 * t) + 0.22 * cos(q * (a + -0.2796 * sin(5.15 * a + -0.04269 * t)))
+let cx = rr * cos(p * a)
+let cy = rr * sin(p * a)
+let cz = 0.22 * sin(q * a)
+let ring = 0.05 + 0.02 * sin(a * 3 + t)
+let x3 = cx + ring * cos(v) * cos(p * a)
+let y3 = cy + ring * cos(v) * sin(p * a)
+let z3 = cz + ring * sin(v)
+let ang = t * 0.15
+x = x3 * cos(ang) - z3 * sin(ang)
+y = y3 * 0.9 + z3 * 0.244
+z = x3 * sin(ang) + z3 * cos(ang)
+h = s
+</pre></details><span class="dl"><a href="wall/kasumi-34-desktop.jpg" download>desktop</a><a href="wall/kasumi-34-phone.jpg" download>phone</a><a href="https://github.com/Cintu07/kasumi/releases/download/gallery-loops/kasumi-34-4k.mp4">4k loop</a></span></figcaption></figure>
 </main><script>const o=new IntersectionObserver(es=>es.forEach(e=>e.isIntersecting?e.target.play().catch(()=>{}):e.target.pause()),{rootMargin:"200px"});document.querySelectorAll("video").forEach(v=>o.observe(v))</script></body></html>
